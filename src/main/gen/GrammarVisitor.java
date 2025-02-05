@@ -1,4 +1,8 @@
 // Generated from C:/Users/fullm/IdeaProjects/Paradigmi_2025/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
+
+    import java.io.FileWriter;
+    import java.io.IOException;
+
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
 /**
@@ -34,6 +38,18 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitS_expr(GrammarParser.S_exprContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link GrammarParser#s_seq}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitS_seq(GrammarParser.S_seqContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#s_expr_aux}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitS_expr_aux(GrammarParser.S_expr_auxContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link GrammarParser#s_term}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -52,11 +68,11 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitL_section(GrammarParser.L_sectionContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link GrammarParser#l_assegn}.
+	 * Visit a parse tree produced by {@link GrammarParser#l_rule}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitL_assegn(GrammarParser.L_assegnContext ctx);
+	T visitL_rule(GrammarParser.L_ruleContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link GrammarParser#l_reg_exp}.
 	 * @param ctx the parse tree

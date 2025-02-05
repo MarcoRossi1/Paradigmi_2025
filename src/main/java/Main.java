@@ -8,16 +8,18 @@ import java.util.Arrays;
 public class Main {
     public static void main(String[] args) {
         // Definizione della stringa da analizzare
-        String regexInput = "LEXER_START\n" +
-                "<LETTER> ::= [a-zA-Z];\n" +
-                "<DIGIT> ::= [0-9];\n" +
-                "<SYMBOL> ::= [+-*/];\n" +
-                "LEXER_END\n" +
+        String regexInput = "PARSER_START\n" +
+                "    <expr> ::= {[<term>]} | [{<expr>}] '|' <term>;\n" +
+                "    <term> ::= <factor> | <term> <factor>;\n" +
+                "    <factor> ::= <variable> | <literal>;\n" +
+                "    <variable> ::= <A>;\n" +
+                "    <literal> ::= <B>;\n" +
+                "PARSER_END\n" +
                 "\n" +
-                "PARSER_START\n" +
-                "<math_expr> ::= '(' <LETTER> <SYMBOL> <DIGIT> ')' ;\n" +
-                "<condition> ::= '[' <LETTER> '>' <DIGIT> ']' ;\n" +
-                "PARSER_END";
+                "LEXER_START\n" +
+                "    <A> ::= a{4,6};\n" +
+                "    <B> ::= b;\n" +
+                "LEXER_END";
 
         System.out.println("Analizzando l'espressione regolare: " + regexInput);
 

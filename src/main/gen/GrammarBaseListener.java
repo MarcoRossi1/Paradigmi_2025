@@ -1,5 +1,9 @@
 // Generated from C:/Users/fullm/IdeaProjects/Paradigmi_2025/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
 
+    import java.io.FileWriter;
+    import java.io.IOException;
+
+
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -64,6 +68,30 @@ public class GrammarBaseListener implements GrammarListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterS_seq(GrammarParser.S_seqContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitS_seq(GrammarParser.S_seqContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterS_expr_aux(GrammarParser.S_expr_auxContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitS_expr_aux(GrammarParser.S_expr_auxContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterS_term(GrammarParser.S_termContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -100,13 +128,13 @@ public class GrammarBaseListener implements GrammarListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterL_assegn(GrammarParser.L_assegnContext ctx) { }
+	@Override public void enterL_rule(GrammarParser.L_ruleContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitL_assegn(GrammarParser.L_assegnContext ctx) { }
+	@Override public void exitL_rule(GrammarParser.L_ruleContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

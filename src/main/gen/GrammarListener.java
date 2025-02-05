@@ -1,4 +1,8 @@
 // Generated from C:/Users/fullm/IdeaProjects/Paradigmi_2025/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
+
+    import java.io.FileWriter;
+    import java.io.IOException;
+
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 /**
@@ -47,6 +51,26 @@ public interface GrammarListener extends ParseTreeListener {
 	 */
 	void exitS_expr(GrammarParser.S_exprContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link GrammarParser#s_seq}.
+	 * @param ctx the parse tree
+	 */
+	void enterS_seq(GrammarParser.S_seqContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#s_seq}.
+	 * @param ctx the parse tree
+	 */
+	void exitS_seq(GrammarParser.S_seqContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#s_expr_aux}.
+	 * @param ctx the parse tree
+	 */
+	void enterS_expr_aux(GrammarParser.S_expr_auxContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#s_expr_aux}.
+	 * @param ctx the parse tree
+	 */
+	void exitS_expr_aux(GrammarParser.S_expr_auxContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link GrammarParser#s_term}.
 	 * @param ctx the parse tree
 	 */
@@ -77,15 +101,15 @@ public interface GrammarListener extends ParseTreeListener {
 	 */
 	void exitL_section(GrammarParser.L_sectionContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link GrammarParser#l_assegn}.
+	 * Enter a parse tree produced by {@link GrammarParser#l_rule}.
 	 * @param ctx the parse tree
 	 */
-	void enterL_assegn(GrammarParser.L_assegnContext ctx);
+	void enterL_rule(GrammarParser.L_ruleContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link GrammarParser#l_assegn}.
+	 * Exit a parse tree produced by {@link GrammarParser#l_rule}.
 	 * @param ctx the parse tree
 	 */
-	void exitL_assegn(GrammarParser.L_assegnContext ctx);
+	void exitL_rule(GrammarParser.L_ruleContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link GrammarParser#l_reg_exp}.
 	 * @param ctx the parse tree

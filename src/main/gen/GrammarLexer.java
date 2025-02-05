@@ -1,4 +1,8 @@
 // Generated from C:/Users/fullm/IdeaProjects/Paradigmi_2025/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
+
+    import java.io.FileWriter;
+    import java.io.IOException;
+
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.Token;
@@ -87,6 +91,37 @@ public class GrammarLexer extends Lexer {
 	public Vocabulary getVocabulary() {
 		return VOCABULARY;
 	}
+
+
+	    static FileWriter writer;
+	    public static void startFile() {
+	        try {
+	            writer = new FileWriter("OutputGrammar.g4");
+	            writer.write("grammar OutputGrammar;\n\n");
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }
+	    }
+
+	    public static void closeFile() {
+	        try {
+	            if (writer != null) {
+	                writer.close();
+	            }
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }
+	    }
+
+	    public static void writeToFile(String text) {
+	        try {
+	            if (writer != null) {
+	                writer.write(text + "\n");
+	            }
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }
+	    }
 
 
 	public GrammarLexer(CharStream input) {

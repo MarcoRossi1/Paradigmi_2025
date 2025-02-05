@@ -1,4 +1,4 @@
-// Generated from C:/Universita/Magistrale/Paradigmi/Paradigmi_2025/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
+// Generated from C:/Users/fullm/IdeaProjects/Paradigmi_2025/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
 /**
@@ -16,21 +16,69 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitStart(GrammarParser.StartContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link GrammarParser#token}.
+	 * Visit a parse tree produced by {@link GrammarParser#s_section}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitToken(GrammarParser.TokenContext ctx);
+	T visitS_section(GrammarParser.S_sectionContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link GrammarParser#atom}.
+	 * Visit a parse tree produced by {@link GrammarParser#s_rule}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitAtom(GrammarParser.AtomContext ctx);
+	T visitS_rule(GrammarParser.S_ruleContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link GrammarParser#quantificatore}.
+	 * Visit a parse tree produced by {@link GrammarParser#s_expr}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitQuantificatore(GrammarParser.QuantificatoreContext ctx);
+	T visitS_expr(GrammarParser.S_exprContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#s_term}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitS_term(GrammarParser.S_termContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#s_group}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitS_group(GrammarParser.S_groupContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#l_section}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitL_section(GrammarParser.L_sectionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#l_assegn}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitL_assegn(GrammarParser.L_assegnContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#l_reg_exp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitL_reg_exp(GrammarParser.L_reg_expContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#l_quant}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitL_quant(GrammarParser.L_quantContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#l_atom}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitL_atom(GrammarParser.L_atomContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#l_interval}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitL_interval(GrammarParser.L_intervalContext ctx);
 }

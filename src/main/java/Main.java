@@ -8,7 +8,16 @@ import java.util.Arrays;
 public class Main {
     public static void main(String[] args) {
         // Definizione della stringa da analizzare
-        String regexInput = "([a-z]*[a-z])";
+        String regexInput = "LEXER_START\n" +
+                "<LETTER> ::= [a-zA-Z];\n" +
+                "<DIGIT> ::= [0-9];\n" +
+                "<SYMBOL> ::= [+-*/];\n" +
+                "LEXER_END\n" +
+                "\n" +
+                "PARSER_START\n" +
+                "<math_expr> ::= '(' <LETTER> <SYMBOL> <DIGIT> ')' ;\n" +
+                "<condition> ::= '[' <LETTER> '>' <DIGIT> ']' ;\n" +
+                "PARSER_END";
 
         System.out.println("Analizzando l'espressione regolare: " + regexInput);
 

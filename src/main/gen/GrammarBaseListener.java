@@ -1,4 +1,4 @@
-// Generated from /Users/marco/Documents/Antlr/Paradigmi/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
+// Generated from C:/Universita/Magistrale/Paradigmi/Paradigmi_2025/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;

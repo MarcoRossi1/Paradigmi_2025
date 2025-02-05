@@ -12,7 +12,7 @@ atom:
     | METACHAR
     | SHORTCUT
     | QOPEN NOT? ((LETTERA | CIFRA)+ | ((LETTERA | CIFRA) TRATTINO (LETTERA | CIFRA))+ ) QCLOSE
-    | TOPEN token (OR token)* TCLOSE;
+    | TOPEN token+ (OR token)* TCLOSE;
 
 quantificatore:
     QUANTIFICATORE

@@ -1,5 +1,9 @@
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
+import org.antlr.v4.gui.TreeViewer;
+
+import javax.swing.*;
+import java.util.Arrays;
 
 public class Main {
     public static void main(String[] args) {
@@ -30,10 +34,24 @@ public class Main {
         parser.removeErrorListeners(); // Rimuove gli errori predefiniti di ANTLR
         parser.addErrorListener(new DiagnosticErrorListener()); // Mostra errori dettagliati
 
-        // Parsing dell'input partendo dalla regola principale (atom)
+        // Parsing dell'input partendo dalla regola principale (start)
         System.out.println("\n== Albero Sintattico ==");
         ParseTree tree = parser.start();
         System.out.println(tree.toStringTree(parser));
+
+        // Visualizzazione grafica dell'albero di parsing
+        showParseTree(parser, tree);
+    }
+
+    public static void showParseTree(Parser parser, ParseTree tree) {
+        JFrame frame = new JFrame("Albero di derivazione");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        TreeViewer viewer = new TreeViewer(Arrays.asList(parser.getRuleNames()), tree);
+        viewer.setScale(1.5); // Imposta la scala per una migliore visualizzazione
+
+        frame.add(viewer);
+        frame.setSize(800, 600);
+        frame.setVisible(true);
     }
 }
-

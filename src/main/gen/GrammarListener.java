@@ -1,7 +1,7 @@
 // Generated from C:/Users/fullm/IdeaProjects/Paradigmi_2025/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
 
-    import java.io.FileWriter;
-    import java.io.IOException;
+    import java.io.*;
+    import java.util.*;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
@@ -121,6 +121,16 @@ public interface GrammarListener extends ParseTreeListener {
 	 */
 	void exitL_reg_exp(GrammarParser.L_reg_expContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link GrammarParser#l_reg_exp_part}.
+	 * @param ctx the parse tree
+	 */
+	void enterL_reg_exp_part(GrammarParser.L_reg_exp_partContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#l_reg_exp_part}.
+	 * @param ctx the parse tree
+	 */
+	void exitL_reg_exp_part(GrammarParser.L_reg_exp_partContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link GrammarParser#l_quant}.
 	 * @param ctx the parse tree
 	 */
@@ -140,6 +150,26 @@ public interface GrammarListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitL_atom(GrammarParser.L_atomContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#l_simple_atom}.
+	 * @param ctx the parse tree
+	 */
+	void enterL_simple_atom(GrammarParser.L_simple_atomContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#l_simple_atom}.
+	 * @param ctx the parse tree
+	 */
+	void exitL_simple_atom(GrammarParser.L_simple_atomContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#l_atom_group}.
+	 * @param ctx the parse tree
+	 */
+	void enterL_atom_group(GrammarParser.L_atom_groupContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#l_atom_group}.
+	 * @param ctx the parse tree
+	 */
+	void exitL_atom_group(GrammarParser.L_atom_groupContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link GrammarParser#l_interval}.
 	 * @param ctx the parse tree

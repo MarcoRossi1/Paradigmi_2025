@@ -1,7 +1,7 @@
 // Generated from C:/Users/fullm/IdeaProjects/Paradigmi_2025/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
 
-    import java.io.FileWriter;
-    import java.io.IOException;
+    import java.io.*;
+    import java.util.*;
 
 
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -152,6 +152,18 @@ public class GrammarBaseListener implements GrammarListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterL_reg_exp_part(GrammarParser.L_reg_exp_partContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitL_reg_exp_part(GrammarParser.L_reg_exp_partContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterL_quant(GrammarParser.L_quantContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -171,6 +183,30 @@ public class GrammarBaseListener implements GrammarListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitL_atom(GrammarParser.L_atomContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterL_simple_atom(GrammarParser.L_simple_atomContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitL_simple_atom(GrammarParser.L_simple_atomContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterL_atom_group(GrammarParser.L_atom_groupContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitL_atom_group(GrammarParser.L_atom_groupContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

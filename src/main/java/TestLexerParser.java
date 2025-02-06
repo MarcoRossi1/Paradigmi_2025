@@ -11,7 +11,7 @@ public class TestLexerParser {
     public static void main(String[] args) {
         // Lista di input da testare
         List<String> testInputs = List.of(
-                "aaaa"
+                "D"
         );
 
         // Itera sui test case

@@ -1,12 +1,12 @@
 PARSER_START
-    <expr> ::= {[<term>]} | [{<expr>}] '|' <term>;
-    <term> ::= <factor> | <term> <factor>;
-    <factor> ::= <variable> | <literal>;
-    <variable> ::= <A>;
-    <literal> ::= <B>;
+<list> ::= [ <elements> ] ;
+<elements> ::= <value> | <value> ',' <elements> ;
+<value> ::= <STRING> | <NUMBER> ;
 PARSER_END
-
 LEXER_START
-    <A> ::= a{};
-    <B> ::= b?;
+<STRING> ::= \" (~["\r\n])* \" ;
+<NUMBER> ::= [0-9]+ ;
+<COMMA> ::= \, ;
+<LBRACK> ::= \[ ;
+<RBRACK> ::= \] ;
 LEXER_END

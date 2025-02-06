@@ -1,7 +1,7 @@
 // Generated from C:/Users/fullm/IdeaProjects/Paradigmi_2025/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
 
-    import java.io.FileWriter;
-    import java.io.IOException;
+    import java.io.*;
+    import java.util.*;
 
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
@@ -80,6 +80,12 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitL_reg_exp(GrammarParser.L_reg_expContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link GrammarParser#l_reg_exp_part}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitL_reg_exp_part(GrammarParser.L_reg_exp_partContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link GrammarParser#l_quant}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -91,6 +97,18 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitL_atom(GrammarParser.L_atomContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#l_simple_atom}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitL_simple_atom(GrammarParser.L_simple_atomContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#l_atom_group}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitL_atom_group(GrammarParser.L_atom_groupContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link GrammarParser#l_interval}.
 	 * @param ctx the parse tree

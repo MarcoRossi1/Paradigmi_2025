@@ -151,6 +151,29 @@ public class GrammarLexer extends Lexer {
 	        writeToFile(ruleName + "_tail" + " : " + "(" + recursivePart + ")" + " " + ruleName + "_tail?" + ";");
 	    }
 
+	    public static String[] splitIgnoringParentheses(String input) {
+	            int openParentheses = 0;
+	            for (int i = 0; i < input.length(); i++) {
+	                char c = input.charAt(i);
+	                if (c == '(') {
+	                    openParentheses++;
+	                } else if (c == ')') {
+	                    openParentheses--;
+	                } else if (c == '|' && openParentheses == 0) {
+	                    // Abbiamo trovato il primo '|' fuori dalle parentesi
+	                    return new String[]{input.substring(0, i), input.substring(i + 1)};
+	                }
+	            }
+	            // Se non troviamo un '|', restituiamo l'intera stringa senza split
+	            return new String[]{input};
+	    }
+
+	    public static boolean startsWithIgnoringBrackets(String input, String prefix) {
+	        // Rimuove parentesi tonde, quadre e graffe iniziali con eventuali spazi
+	        String cleaned = input.replaceFirst("^[\\[{(]+\\s*", "");
+	        return cleaned.startsWith(prefix);
+	    }
+
 
 
 	public GrammarLexer(CharStream input) {

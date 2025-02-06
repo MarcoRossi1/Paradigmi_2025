@@ -160,6 +160,29 @@ public class GrammarParser extends Parser {
 	        writeToFile(ruleName + "_tail" + " : " + "(" + recursivePart + ")" + " " + ruleName + "_tail?" + ";");
 	    }
 
+	    public static String[] splitIgnoringParentheses(String input) {
+	            int openParentheses = 0;
+	            for (int i = 0; i < input.length(); i++) {
+	                char c = input.charAt(i);
+	                if (c == '(') {
+	                    openParentheses++;
+	                } else if (c == ')') {
+	                    openParentheses--;
+	                } else if (c == '|' && openParentheses == 0) {
+	                    // Abbiamo trovato il primo '|' fuori dalle parentesi
+	                    return new String[]{input.substring(0, i), input.substring(i + 1)};
+	                }
+	            }
+	            // Se non troviamo un '|', restituiamo l'intera stringa senza split
+	            return new String[]{input};
+	    }
+
+	    public static boolean startsWithIgnoringBrackets(String input, String prefix) {
+	        // Rimuove parentesi tonde, quadre e graffe iniziali con eventuali spazi
+	        String cleaned = input.replaceFirst("^[\\[{(]+\\s*", "");
+	        return cleaned.startsWith(prefix);
+	    }
+
 
 	public GrammarParser(TokenStream input) {
 		super(input);
@@ -342,11 +365,11 @@ public class GrammarParser extends Parser {
 
 			        while (!queue.isEmpty()) {
 			            String current = queue.poll();
-			            String[] parts = current.split("\\|", 2); // Dividi solo alla prima occorrenza di '|'
+			            String[] parts = splitIgnoringParentheses(current); // Dividi solo alla prima occorrenza di '|'
 			            String leftPart = parts[0].trim();
 
 			            // Se la parte sinistra inizia con ruleName, la aggiungiamo ai pezzi ricorsivi
-			            if (leftPart.startsWith(ruleName)) {
+			            if (startsWithIgnoringBrackets(leftPart,ruleName)) {
 			                if (recursiveParts.length() > 0) recursiveParts.append(" | ");
 			                recursiveParts.append(leftPart);
 

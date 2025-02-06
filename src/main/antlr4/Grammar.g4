@@ -3,6 +3,7 @@ grammar Grammar;
 @header {
     import java.io.FileWriter;
     import java.io.IOException;
+    import java.util.Collections;
 }
 
 @members {
@@ -38,9 +39,9 @@ grammar Grammar;
 }
 
 start:
-    { startFile(); } // Inizializza il file
+    { startFile(); }
     s_section l_section EOF
-    { closeFile(); }; // Chiude il file dopo l'analisi;
+    { closeFile(); };
 
 s_section:
     S_START s_rule+ S_END;
@@ -67,7 +68,7 @@ s_seq returns [String value]:
             $value += " " + $e2.value.trim();
         }
     }
-    | { $value = ""; }; // Caso base;
+    | { $value = ""; };
 
 s_expr_aux returns [String value]:
     '|' e1=s_seq (e2=s_expr_aux)? {
@@ -76,7 +77,7 @@ s_expr_aux returns [String value]:
             $value += " " + $e2.value.trim();
         }
     }
-    | { $value = ""; }; // Caso base;
+    | { $value = ""; };
 
 s_term returns [String value]:
     S_TOKEN { $value = $S_TOKEN.text.replaceAll("[<>]", ""); }
@@ -86,8 +87,8 @@ s_term returns [String value]:
 
 s_group returns [String value]:
     '(' e=s_expr ')' { $value = "(" + $e.value + ")"; }
-    | '[' e=s_expr ']' { $value = "(" + $e.value + ")" + "?"; }
-    | '{' e=s_expr '}' { $value = "(" + $e.value + ")" + "+"; };
+    | '[' e=s_expr ']' { $value = "(" + $e.value + ")?"; }
+    | '{' e=s_expr '}' { $value = "(" + $e.value + ")+"; };
 
 l_section:
     L_START l_rule+ L_END;
@@ -100,11 +101,38 @@ l_rule:
     };
 
 l_reg_exp returns [String value]:
-   (l_atom l_quant?)+ { $value = $l_atom.value + ($l_quant.text != null ? $l_quant.text : ""); };
+   (l_atom l_quant?)+ {
+       if ($l_quant.text != null) {
+           String q = $l_quant.text;
+           if (q.matches("\\{\\d+,\\d+\\}")) {  // Caso {m,n}
+               String[] bounds = q.replaceAll("[{}]", "").split(",");
+               int min = Integer.parseInt(bounds[0]);
+               int max = Integer.parseInt(bounds[1]);
+               if (max > min) {
+                   $value = String.join(" ", Collections.nCopies(min, $l_atom.value)) +
+                            String.join(" ", Collections.nCopies(max - min, "(" + $l_atom.value + ")?"));
+               } else {
+                   $value = String.join(" ", Collections.nCopies(min, $l_atom.value));
+               }
+           } else if (q.matches("\\{\\d+,\\}")) {  // Caso {m,}
+               int min = Integer.parseInt(q.replaceAll("[{}]", "").split(",")[0]);
+               $value = String.join(" ", Collections.nCopies(min, $l_atom.value)) + " " + $l_atom.value + "*";
+           } else if (q.matches("\\{\\d+\\}")) {  // Caso {m}
+               int count = Integer.parseInt(q.replaceAll("[{}]", ""));
+               $value = String.join(" ", Collections.nCopies(count, $l_atom.value));
+           } else {
+               $value = $l_atom.value + q; // ?, +, *
+           }
+       } else {
+           $value = $l_atom.value;
+       }
+   };
 
-l_quant:
+l_quant returns [String value]:
     QUANTIFICATORE
-    | '{' CIFRA+ (',' CIFRA*)? '}';
+        | '{' CIFRA+ (',' CIFRA*)? '}';
+
+
 
 l_atom returns [String value]:
     LETTERA { $value = "'" + $LETTERA.text + "'"; }

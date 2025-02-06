@@ -3,55 +3,53 @@ import org.antlr.v4.runtime.tree.*;
 import org.antlr.v4.gui.TreeViewer;
 
 import javax.swing.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public class Main {
     public static void main(String[] args) {
-        // Definizione della stringa da analizzare
-        String regexInput = "PARSER_START\n" +
-                "    <expr> ::= {[<term>]} | [{<expr>}] '|' <term>;\n" +
-                "    <term> ::= <factor> | <term> <factor>;\n" +
-                "    <factor> ::= <variable> | <literal>;\n" +
-                "    <variable> ::= <A>;\n" +
-                "    <literal> ::= <B>;\n" +
-                "PARSER_END\n" +
-                "\n" +
-                "LEXER_START\n" +
-                "    <A> ::= a{4,6};\n" +
-                "    <B> ::= b;\n" +
-                "LEXER_END";
+        try {
+            // Legge il file da src/main/resources/
+            InputStream is = Main.class.getClassLoader().getResourceAsStream("input.txt");
+            if (is == null) {
+                throw new RuntimeException("File input.txt non trovato in resources!");
+            }
 
-        System.out.println("Analizzando l'espressione regolare: " + regexInput);
+            // Converte lo stream in CharStream per ANTLR
+            CharStream input = CharStreams.fromStream(is, StandardCharsets.UTF_8);
 
-        // Creazione dello stream di input dalla stringa
-        CharStream input = CharStreams.fromString(regexInput);
+            // Creazione del lexer
+            GrammarLexer lexer = new GrammarLexer(input);
+            CommonTokenStream tokens = new CommonTokenStream(lexer);
 
-        // Creazione del lexer
-        GrammarLexer lexer = new GrammarLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
+            // Stampa i token generati
+            System.out.println("\n== Token Generati ==");
+            tokens.fill();
+            for (Token token : tokens.getTokens()) {
+                System.out.println("Token: " + token.getText() + " -> Tipo: " + GrammarLexer.VOCABULARY.getSymbolicName(token.getType()));
+            }
 
-        // Stampa i token generati
-        System.out.println("\n== Token Generati ==");
-        tokens.fill();
-        for (Token token : tokens.getTokens()) {
-            System.out.println("Token: " + token.getText() + " -> Tipo: " + GrammarLexer.VOCABULARY.getSymbolicName(token.getType()));
+            // Creazione del parser
+            GrammarParser parser = new GrammarParser(tokens);
+
+            // Attivare messaggi di debug
+            parser.setBuildParseTree(true);
+            parser.removeErrorListeners(); // Rimuove gli errori predefiniti di ANTLR
+            parser.addErrorListener(new DiagnosticErrorListener()); // Mostra errori dettagliati
+
+            // Parsing dell'input partendo dalla regola principale (start)
+            System.out.println("\n== Albero Sintattico ==");
+            ParseTree tree = parser.start();
+            System.out.println(tree.toStringTree(parser));
+
+            // Visualizzazione grafica dell'albero di parsing
+            showParseTree(parser, tree);
+
+        } catch (IOException e) {
+            System.err.println("Errore nella lettura del file: " + e.getMessage());
         }
-
-        // Creazione del parser
-        GrammarParser parser = new GrammarParser(tokens);
-
-        // Attivare messaggi di debug
-        parser.setBuildParseTree(true);
-        parser.removeErrorListeners(); // Rimuove gli errori predefiniti di ANTLR
-        parser.addErrorListener(new DiagnosticErrorListener()); // Mostra errori dettagliati
-
-        // Parsing dell'input partendo dalla regola principale (start)
-        System.out.println("\n== Albero Sintattico ==");
-        ParseTree tree = parser.start();
-        System.out.println(tree.toStringTree(parser));
-
-        // Visualizzazione grafica dell'albero di parsing
-        showParseTree(parser, tree);
     }
 
     public static void showParseTree(Parser parser, ParseTree tree) {
@@ -59,10 +57,15 @@ public class Main {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         TreeViewer viewer = new TreeViewer(Arrays.asList(parser.getRuleNames()), tree);
-        viewer.setScale(1.5); // Imposta la scala per una migliore visualizzazione
+        viewer.setScale(1.2); // Scala leggermente più grande per leggibilità
 
-        frame.add(viewer);
-        frame.setSize(800, 600);
+        // Aggiungere uno JScrollPane per permettere lo scroll
+        JPanel panel = new JPanel();
+        panel.add(viewer);
+        JScrollPane scrollPane = new JScrollPane(panel);
+        frame.add(scrollPane);
+
+        frame.setSize(1000, 800); // Aumentare la dimensione della finestra
         frame.setVisible(true);
     }
 }

@@ -1,12 +1,19 @@
 PARSER_START
-<list> ::= [ <elements> ] ;
-<elements> ::= <value> | <value> ',' <elements> ;
-<value> ::= <STRING> | <NUMBER> ;
+<stmt_list> ::= <stmt_list> <stmt> | <stmt> ;
+<stmt> ::= <assign> | <print> ;
+<assign> ::= <IDENTIFIER> '=' <expr> ';' ;
+<print> ::= <PRINT> '(' <IDENTIFIER> ')' ';' ;
+<expr> ::= <expr> '+' <term> | <term> ;
+<term> ::= <NUMBER> | <IDENTIFIER> ;
 PARSER_END
+
 LEXER_START
-<STRING> ::= \" (~["\r\n])* \" ;
+<IDENTIFIER> ::= [a-zA-Z_][a-zA-Z0-9_]* ;
 <NUMBER> ::= [0-9]+ ;
-<COMMA> ::= \, ;
-<LBRACK> ::= \[ ;
-<RBRACK> ::= \] ;
+<EQUAL> ::= \= ;
+<PLUS> ::= \+ ;
+<PRINT> ::= print ;
+<LPAREN> ::= \( ;
+<RPAREN> ::= \) ;
+<SEMI> ::= \; ;
 LEXER_END

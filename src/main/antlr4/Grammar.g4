@@ -3,6 +3,7 @@ grammar Grammar;
 @header {
     import java.io.*;
     import java.util.*;
+    import java.util.regex.*;
 }
 
 @members {
@@ -54,6 +55,15 @@ grammar Grammar;
             e.printStackTrace();
         }
     }
+
+    // Funzione per rimuovere la ricorsione sinistra
+    public static void removeLeftRecursion(String ruleName, String leftPart, String rightPart) {
+        String nonRecursivePart = rightPart.trim();
+        String recursivePart = leftPart.replace(ruleName,"").trim();
+        writeToFile(ruleName + " : " + "(" + nonRecursivePart + ")" + " " + ruleName + "_tail?" + ";");
+        writeToFile(ruleName + "_tail" + " : " + "(" + recursivePart + ")" + " " + ruleName + "_tail?" + ";");
+    }
+
 }
 
 start:
@@ -69,9 +79,53 @@ s_rule:
     {
         String ruleName = $NON_TERM.text.replaceAll("[<>]", "");
         declaredNonTerms.add(ruleName.toLowerCase());
-        writeToFile(ruleName.toLowerCase() + " : " + $s_expr.value + ";");
-    };
 
+        StringBuilder recursiveParts = new StringBuilder();
+        StringBuilder nonRecursiveParts = new StringBuilder();
+
+        Queue<String> queue = new LinkedList<>();
+        queue.add($s_expr.value.trim());
+
+        while (!queue.isEmpty()) {
+            String current = queue.poll();
+            String[] parts = current.split("\\|", 2); // Dividi solo alla prima occorrenza di '|'
+            String leftPart = parts[0].trim();
+
+            // Se la parte sinistra inizia con ruleName, la aggiungiamo ai pezzi ricorsivi
+            if (leftPart.startsWith(ruleName)) {
+                if (recursiveParts.length() > 0) recursiveParts.append(" | ");
+                recursiveParts.append(leftPart);
+
+                // Se esiste una parte destra, continua la divisione con essa
+                if (parts.length > 1) {
+                    queue.add(parts[1].trim());
+                }
+
+            } else {
+                // Se la parte sinistra NON è ricorsiva, la aggiungiamo ai pezzi normali
+                if (nonRecursiveParts.length() > 0) nonRecursiveParts.append(" | ");
+                nonRecursiveParts.append(leftPart);
+
+                // Se esiste una parte destra, la aggiungiamo direttamente ai pezzi normali
+                if (parts.length > 1) {
+                    if (nonRecursiveParts.length() > 0) nonRecursiveParts.append(" | ");
+                    nonRecursiveParts.append(parts[1].trim());
+                }
+            }
+        }
+
+        String leftPart = recursiveParts.toString();
+        String rightPart = nonRecursiveParts.toString();
+
+        if (leftPart.length() > 0 && rightPart.length() > 0)
+            removeLeftRecursion(ruleName, leftPart, rightPart);
+        else if (leftPart.length() == 0 && rightPart.length() > 0)
+            writeToFile(ruleName.toLowerCase() + " : " + rightPart + ";");
+        else if (leftPart.length() > 0 && rightPart.length() == 0) {
+            writeToFile(ruleName.toLowerCase() + " : " + leftPart + ";");
+            System.err.println("La regola sintattica " + ruleName + " presenta una ricorsione diretta infinita");
+        }
+    };
 
 s_expr returns [String value]:
     e1=s_seq (e2=s_expr_aux)? {
@@ -169,10 +223,10 @@ l_reg_exp_part returns [String value]:
     };
 
 l_quant:
-    '{' num1=NUM (',' num2=NUM?)? '}'
+    '{' cifra1=CIFRA+ (',' cifra2=CIFRA+)? '}'
     {
-        int min = Integer.parseInt($num1.text);
-        int max = Integer.parseInt($num2.text);
+        int min = Integer.parseInt($cifra1.text);
+        int max = Integer.parseInt($cifra2.text);
         if (min > max) {
             System.err.println("Errore: Quantificatore non valido {" + min + "," + max + "}: il primo numero non può essere maggiore del secondo.");
         }
@@ -185,6 +239,8 @@ l_atom returns [String value]:
 
 l_simple_atom returns [String value]:
     CHAR { $value = "'" + $CHAR.text + "'"; }
+    | CIFRA { $value = "'" + $CIFRA.text + "'"; }
+    | ESCAPE { $value = "'" + $ESCAPE.text + "'"; }
     | METACHAR { $value = "'" + $METACHAR.getText().charAt(1) + "'"; }
     | SHORTCUT
     {
@@ -199,20 +255,38 @@ l_simple_atom returns [String value]:
             default: $value = "'" + shortcutText + "'"; break;
          }
     }
-    | '[' '^'? (l_interval | CHAR)+ ']'
-    {
-        String textValue = $text;
-        if (textValue.startsWith("[^")) {
-            textValue = "~[" + textValue.substring(2);
-        }
-        $value = textValue;
-    };
+    | '[' '^'? (l_interval | CHAR | CIFRA | ESCAPE | METACHAR)+ ']'
+      {
+          String textValue = $text;
+          // Creiamo un pattern per trovare il backslash seguito da un carattere
+          Pattern pattern = Pattern.compile("\\\\(.)");
+          Matcher matcher = pattern.matcher(textValue);
+          StringBuffer result = new StringBuffer();
+
+          // Eseguiamo la sostituzione in base al tipo di carattere
+          while (matcher.find()) {
+              String matched = matcher.group(1);
+              // Se è uno degli escape \r, \n, \t, manteniamo il backslash
+              if (!(matched.equals("r") || matched.equals("n") || matched.equals("t"))) {
+                  matcher.appendReplacement(result, matched);  // Rimuovi il backslash per i METACHAR
+              }
+          }
+          matcher.appendTail(result);  // Aggiungiamo il resto della stringa
+          textValue = result.toString();
+
+      // Gestire il caso del negato '[^'
+      if (textValue.startsWith("[^")) {
+          textValue = "~[" + textValue.substring(2);
+      }
+
+      $value = textValue;
+  };
 
 l_atom_group returns [String value]:
     '(' s1=l_reg_exp ')' { $value = "(" + $s1.value + ")"; };
 
 l_interval:
-    (char1=CHAR '-' char2=CHAR)
+    (char1=(CHAR|CIFRA) '-' char2=(CHAR|CIFRA))
     {
         char startChar = $char1.text.charAt(0);
         char endChar = $char2.text.charAt(0);
@@ -220,7 +294,6 @@ l_interval:
             System.err.println("Errore: Intervallo non valido '" + startChar + "-" + endChar + "': il primo carattere deve avere un valore ASCII minore o uguale al secondo.");
         }
     };
-
 
 L_START: 'LEXER_START';
 L_END: 'LEXER_END';
@@ -230,9 +303,10 @@ S_END: 'PARSER_END';
 NON_TERM: '<' [a-z_]+ '>';
 S_CHAR: '\'' ~['\r\n] '\'';
 QUANTIFICATORE: '?' | '+' | '*';
-NUM: [0-9]+;
-CHAR: [a-zA-Z0-9_];
+CIFRA: [0-9];
+CHAR: [a-zA-Z_];
 METACHAR: '\\' ~[a-zA-Z0-9_];
 SHORTCUT: '\\' [dDwWsS];
+ESCAPE: '\\' [trn];
 EQUAL: '::=';
 WS: [ \t\r\n]+ -> skip;

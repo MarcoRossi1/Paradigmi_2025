@@ -105,13 +105,25 @@ public class GrammarBaseListener implements GrammarListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterS_group(GrammarParser.S_groupContext ctx) { }
+	@Override public void enterS_atom(GrammarParser.S_atomContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitS_group(GrammarParser.S_groupContext ctx) { }
+	@Override public void exitS_atom(GrammarParser.S_atomContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterS_brackets_atom(GrammarParser.S_brackets_atomContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitS_brackets_atom(GrammarParser.S_brackets_atomContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

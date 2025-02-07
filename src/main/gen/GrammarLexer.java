@@ -146,9 +146,27 @@ public class GrammarLexer extends Lexer {
 	    // Funzione per rimuovere la ricorsione sinistra
 	    public static void removeLeftRecursion(String ruleName, String leftPart, String rightPart) {
 	        String nonRecursivePart = rightPart.trim();
-	        String recursivePart = leftPart.replace(ruleName,"").trim();
-	        writeToFile(ruleName + " : " + "(" + nonRecursivePart + ")" + " " + ruleName + "_tail?" + ";");
+	        String recursivePart = cleanRule(leftPart, ruleName);
+	        String op = checkOperator(recursivePart);
+	        recursivePart = recursivePart.replace(op,"").trim();
+	        writeToFile(ruleName + " : " + "(" + nonRecursivePart + ")" + op + " " + ruleName + "_tail?" + ";");
 	        writeToFile(ruleName + "_tail" + " : " + "(" + recursivePart + ")" + " " + ruleName + "_tail?" + ";");
+	    }
+
+	    public static String cleanRule(String leftPart, String ruleName) {
+	        String result = leftPart.replace(ruleName,"").trim();
+	        String regex = "\\(\\s*([?+*]*)\\s*\\)";
+	        // Ciclo per rimuovere ripetutamente le parentesi e i simboli
+	        while (result.matches(".*" + regex + ".*")) {
+	            result = result.replaceFirst(regex, "$1").trim();
+	        }
+	        return result;
+	    }
+
+	    public static String checkOperator(String input) {
+	        String op = input.trim().substring(0,1);
+	        if (op.equals("*") | op.equals("+") | op.equals("?")) return op;
+	        else return "";
 	    }
 
 	    public static String[] splitIgnoringParentheses(String input) {

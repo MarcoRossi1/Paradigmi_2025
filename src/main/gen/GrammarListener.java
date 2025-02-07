@@ -82,15 +82,25 @@ public interface GrammarListener extends ParseTreeListener {
 	 */
 	void exitS_term(GrammarParser.S_termContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link GrammarParser#s_group}.
+	 * Enter a parse tree produced by {@link GrammarParser#s_atom}.
 	 * @param ctx the parse tree
 	 */
-	void enterS_group(GrammarParser.S_groupContext ctx);
+	void enterS_atom(GrammarParser.S_atomContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link GrammarParser#s_group}.
+	 * Exit a parse tree produced by {@link GrammarParser#s_atom}.
 	 * @param ctx the parse tree
 	 */
-	void exitS_group(GrammarParser.S_groupContext ctx);
+	void exitS_atom(GrammarParser.S_atomContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#s_brackets_atom}.
+	 * @param ctx the parse tree
+	 */
+	void enterS_brackets_atom(GrammarParser.S_brackets_atomContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#s_brackets_atom}.
+	 * @param ctx the parse tree
+	 */
+	void exitS_brackets_atom(GrammarParser.S_brackets_atomContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link GrammarParser#l_section}.
 	 * @param ctx the parse tree

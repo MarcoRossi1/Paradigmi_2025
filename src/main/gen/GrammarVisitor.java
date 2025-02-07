@@ -57,11 +57,17 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitS_term(GrammarParser.S_termContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link GrammarParser#s_group}.
+	 * Visit a parse tree produced by {@link GrammarParser#s_atom}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitS_group(GrammarParser.S_groupContext ctx);
+	T visitS_atom(GrammarParser.S_atomContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#s_brackets_atom}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitS_brackets_atom(GrammarParser.S_brackets_atomContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link GrammarParser#l_section}.
 	 * @param ctx the parse tree

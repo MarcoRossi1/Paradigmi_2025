@@ -1,5 +1,5 @@
 PARSER_START
-<stmt_list> ::= (<stmt_list> <stmt>) | <stmt> ;
+<stmt_list> ::= [<stmt_list>] <stmt> | <stmt> ;
 <stmt> ::= <assign> | <print> ;
 <assign> ::= <IDENTIFIER> '=' <expr> ';' ;
 <print> ::= <PRINT> '(' <IDENTIFIER> ')' ';' ;

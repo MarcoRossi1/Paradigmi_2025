@@ -12,6 +12,7 @@ grammar Grammar;
     static Set<String> declaredTerms = new HashSet<>();
     static Set<String> usedNonTerms = new HashSet<>();
     static Set<String> usedTerms = new HashSet<>();
+    static Map<String, Set<String>> dependencies = new HashMap<>();
 
     public static void startFile() {
         try {
@@ -41,6 +42,10 @@ grammar Grammar;
                     System.err.println("Errore: Il TERM '" + token + "' è usato ma non dichiarato.");
                 }
             }
+
+            // Controllo per la ricorsione sinistra indiretta
+            checkIndirectLeftRecursion();
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -60,8 +65,19 @@ grammar Grammar;
     public static void removeLeftRecursion(String ruleName, String leftPart, String rightPart) {
         String nonRecursivePart = rightPart.trim();
         String recursivePart = cleanRule(leftPart, ruleName);
-        String op = checkOperator(recursivePart);
-        recursivePart = recursivePart.replace(op,"").trim();
+        char op = checkOperators(splitIgnoringParentheses(recursivePart));
+        StringBuilder buffer = new StringBuilder();
+        for (String s: splitIgnoringParentheses(recursivePart)) {
+            s = s.trim();
+            while (startsWithIgnoringBrackets(s,"+") | startsWithIgnoringBrackets(s,"*") | startsWithIgnoringBrackets(s,"?")) {
+                if (startsWithIgnoringBrackets(s,"+")) s = s.replaceFirst("\\+", "");
+                else if (startsWithIgnoringBrackets(s,"*")) s = s.replaceFirst("\\*", "");
+                else if (startsWithIgnoringBrackets(s,"?")) s = s.replaceFirst("\\?", "");
+            }
+            if (buffer.length() > 0) buffer.append(" | ");
+            buffer.append(s);
+        }
+        recursivePart = buffer.toString();
         writeToFile(ruleName + " : " + "(" + nonRecursivePart + ")" + op + " " + ruleName + "_tail?" + ";");
         writeToFile(ruleName + "_tail" + " : " + "(" + recursivePart + ")" + " " + ruleName + "_tail?" + ";");
     }
@@ -76,35 +92,73 @@ grammar Grammar;
         return result;
     }
 
-    public static String checkOperator(String input) {
-        String op = input.trim().substring(0,1);
-        if (op.equals("*") | op.equals("+") | op.equals("?")) return op;
-        else return "";
+    public static char checkOperators(String[] input) {
+        List<String> chars = new ArrayList<String>();
+        for (String s: input) {
+            s = s.trim();
+            while (s.charAt(0) == '(') s = s.substring(1,s.length());
+            String op = s.substring(0,1);
+            if (op.equals("*") | op.equals("+") | op.equals("?")) chars.add(op);
+        }
+        if (chars.contains("?") && !chars.contains("+") && !chars.contains("*"))
+            return '?';
+        else if (!chars.contains("?") && chars.contains("+") && !chars.contains("*"))
+            return '+';
+        else if (chars.contains("?") && chars.contains("+") || chars.contains("*"))
+            return '*';
+        else
+            return ' ';
     }
 
     public static String[] splitIgnoringParentheses(String input) {
-            int openParentheses = 0;
-            for (int i = 0; i < input.length(); i++) {
-                char c = input.charAt(i);
-                if (c == '(') {
-                    openParentheses++;
-                } else if (c == ')') {
-                    openParentheses--;
-                } else if (c == '|' && openParentheses == 0) {
-                    // Abbiamo trovato il primo '|' fuori dalle parentesi
-                    return new String[]{input.substring(0, i), input.substring(i + 1)};
-                }
+        List<String> parts = new ArrayList<>();
+        int openParentheses = 0;
+        int lastSplitIndex = 0;
+
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (c == '(') {
+                openParentheses++;
+            } else if (c == ')') {
+                openParentheses--;
+            } else if (c == '|' && openParentheses == 0) {
+                parts.add(input.substring(lastSplitIndex, i));
+                lastSplitIndex = i + 1;
             }
-            // Se non troviamo un '|', restituiamo l'intera stringa senza split
-            return new String[]{input};
+        }
+
+        // Aggiunge l'ultima parte della stringa
+        parts.add(input.substring(lastSplitIndex));
+
+        return parts.toArray(new String[0]);
     }
 
     public static boolean startsWithIgnoringBrackets(String input, String prefix) {
         // Rimuove parentesi tonde, quadre e graffe iniziali con eventuali spazi
-        String cleaned = input.replaceFirst("^[\\[{(]+\\s*", "");
+        String cleaned = input.replaceFirst("^[\\(]+\\s*", "");
         return cleaned.startsWith(prefix);
     }
 
+    public static void checkIndirectLeftRecursion() {
+        for (String rule : declaredNonTerms) {
+            Set<String> visited = new HashSet<>();
+            if (hasIndirectLeftRecursion(rule, rule, visited)) {
+                System.err.println("Warning: Ricorsione sinistra indiretta trovata in " + rule);
+            }
+        }
+    }
+
+    private static boolean hasIndirectLeftRecursion(String start, String current, Set<String> visited) {
+        if (!dependencies.containsKey(current)) return false;
+        if (visited.contains(current)) return false; // Evita cicli infiniti
+
+        visited.add(current);
+        for (String next : dependencies.get(current)) {
+            if (next.equals(start)) return true; // Abbiamo trovato un ciclo che riporta alla regola iniziale
+            if (hasIndirectLeftRecursion(start, next, visited)) return true;
+        }
+        return false;
+    }
 }
 
 start:
@@ -124,34 +178,18 @@ s_rule:
         StringBuilder recursiveParts = new StringBuilder();
         StringBuilder nonRecursiveParts = new StringBuilder();
 
-        Queue<String> queue = new LinkedList<>();
-        queue.add($s_expr.value.trim());
-
-        while (!queue.isEmpty()) {
-            String current = queue.poll();
-            String[] parts = splitIgnoringParentheses(current); // Dividi solo alla prima occorrenza di '|'
-            String leftPart = parts[0].trim();
-
-            // Se la parte sinistra inizia con ruleName, la aggiungiamo ai pezzi ricorsivi
-            if (startsWithIgnoringBrackets(leftPart,ruleName)) {
+        for(String rule: splitIgnoringParentheses($s_expr.value.trim())) {
+            rule = rule.trim();
+            if (startsWithIgnoringBrackets(rule, ruleName)) {
                 if (recursiveParts.length() > 0) recursiveParts.append(" | ");
-                recursiveParts.append(leftPart);
-
-                // Se esiste una parte destra, continua la divisione con essa
-                if (parts.length > 1) {
-                    queue.add(parts[1].trim());
-                }
-
-            } else {
-                // Se la parte sinistra NON è ricorsiva, la aggiungiamo ai pezzi normali
+                recursiveParts.append(rule);
+            }
+            else {
                 if (nonRecursiveParts.length() > 0) nonRecursiveParts.append(" | ");
-                nonRecursiveParts.append(leftPart);
-
-                // Se esiste una parte destra, la aggiungiamo direttamente ai pezzi normali
-                if (parts.length > 1) {
-                    if (nonRecursiveParts.length() > 0) nonRecursiveParts.append(" | ");
-                    nonRecursiveParts.append(parts[1].trim());
-                }
+                nonRecursiveParts.append(rule);
+                String token = rule.split("\\s+")[0].replaceAll("[\\(\\)\\?\\+\\*]", "");
+                if (token != null)
+                    dependencies.computeIfAbsent(ruleName, k -> new HashSet<>()).add(token);
             }
         }
 

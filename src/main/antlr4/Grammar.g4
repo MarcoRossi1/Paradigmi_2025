@@ -18,6 +18,12 @@ grammar Grammar;
         try {
             writer = new FileWriter("OutputGrammar.g4");
             writer.write("grammar OutputGrammar;\n\n");
+            writer.write("@header {\n");
+            writer.write("  // Inserisci qui gli import\n");
+            writer.write("}\n\n");
+            writer.write("@members {\n");
+            writer.write("  // Inserisci qui il tuo codice\n");
+            writer.write("}\n\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -62,7 +68,7 @@ grammar Grammar;
     }
 
     // Funzione per rimuovere la ricorsione sinistra
-    public static void removeLeftRecursion(String ruleName, String leftPart, String rightPart) {
+    public static String[] removeLeftRecursion(String ruleName, String leftPart, String rightPart) {
         String nonRecursivePart = rightPart.trim();
         String recursivePart = cleanRule(leftPart, ruleName);
         char op = checkOperators(splitIgnoringParentheses(recursivePart));
@@ -78,8 +84,9 @@ grammar Grammar;
             buffer.append(s);
         }
         recursivePart = buffer.toString();
-        writeToFile(ruleName + " : " + "(" + nonRecursivePart + ")" + op + " " + ruleName + "_tail?" + ";");
-        writeToFile(ruleName + "_tail" + " : " + "(" + recursivePart + ")" + " " + ruleName + "_tail?" + ";");
+        String rule1 = ruleName + " : " + "(" + nonRecursivePart + ")" + op + " " + ruleName + "_tail?";
+        String rule2 = ruleName + "_tail" + " : " + "(" + recursivePart + ")" + " " + ruleName + "_tail?";
+        return new String[]{rule1, rule2};
     }
 
     public static String cleanRule(String leftPart, String ruleName) {
@@ -196,13 +203,21 @@ s_rule:
         String leftPart = recursiveParts.toString();
         String rightPart = nonRecursiveParts.toString();
 
+        List<String> rules = new ArrayList<String>();
+
         if (leftPart.length() > 0 && rightPart.length() > 0)
-            removeLeftRecursion(ruleName, leftPart, rightPart);
+            rules = Arrays.asList(removeLeftRecursion(ruleName, leftPart, rightPart));
         else if (leftPart.length() == 0 && rightPart.length() > 0)
-            writeToFile(ruleName.toLowerCase() + " : " + rightPart + ";");
+            rules.add(ruleName.toLowerCase() + " : " + rightPart);
         else if (leftPart.length() > 0 && rightPart.length() == 0) {
-            writeToFile(ruleName.toLowerCase() + " : " + leftPart + ";");
+            rules.add(ruleName.toLowerCase() + " : " + leftPart);
             System.err.println("La regola sintattica " + ruleName + " presenta una ricorsione diretta infinita");
+        }
+
+        for(String rule: rules) {
+            writeToFile(rule + " {");
+            writeToFile("  // Inserisci qui le azioni semantiche");
+            writeToFile("};\n");
         }
     };
 

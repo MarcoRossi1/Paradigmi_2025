@@ -105,6 +105,12 @@ public class GrammarLexer extends Lexer {
 	        try {
 	            writer = new FileWriter("OutputGrammar.g4");
 	            writer.write("grammar OutputGrammar;\n\n");
+	            writer.write("@header {\n");
+	            writer.write("  // Inserisci qui gli import\n");
+	            writer.write("}\n\n");
+	            writer.write("@members {\n");
+	            writer.write("  // Inserisci qui il tuo codice\n");
+	            writer.write("}\n\n");
 	        } catch (IOException e) {
 	            e.printStackTrace();
 	        }
@@ -149,7 +155,7 @@ public class GrammarLexer extends Lexer {
 	    }
 
 	    // Funzione per rimuovere la ricorsione sinistra
-	    public static void removeLeftRecursion(String ruleName, String leftPart, String rightPart) {
+	    public static String[] removeLeftRecursion(String ruleName, String leftPart, String rightPart) {
 	        String nonRecursivePart = rightPart.trim();
 	        String recursivePart = cleanRule(leftPart, ruleName);
 	        char op = checkOperators(splitIgnoringParentheses(recursivePart));
@@ -162,11 +168,12 @@ public class GrammarLexer extends Lexer {
 	                else if (startsWithIgnoringBrackets(s,"?")) s = s.replaceFirst("\\?", "");
 	            }
 	            if (buffer.length() > 0) buffer.append(" | ");
-	            buffer.append(s.trim());
+	            buffer.append(s);
 	        }
 	        recursivePart = buffer.toString();
-	        writeToFile(ruleName + " : " + "(" + nonRecursivePart + ")" + op + " " + ruleName + "_tail?" + ";");
-	        writeToFile(ruleName + "_tail" + " : " + "(" + recursivePart + ")" + " " + ruleName + "_tail?" + ";");
+	        String rule1 = ruleName + " : " + "(" + nonRecursivePart + ")" + op + " " + ruleName + "_tail?";
+	        String rule2 = ruleName + "_tail" + " : " + "(" + recursivePart + ")" + " " + ruleName + "_tail?";
+	        return new String[]{rule1, rule2};
 	    }
 
 	    public static String cleanRule(String leftPart, String ruleName) {

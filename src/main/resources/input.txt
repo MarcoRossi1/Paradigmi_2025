@@ -16,4 +16,5 @@ LEXER_START
 <LPAREN> ::= \( ;
 <RPAREN> ::= \) ;
 <SEMI> ::= \; ;
+<SKIP_> ::= [\t\r\n]+;
 LEXER_END

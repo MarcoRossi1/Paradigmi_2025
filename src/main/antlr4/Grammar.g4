@@ -281,7 +281,8 @@ l_rule:
     {
         String tokenName = $TERM.text.replaceAll("[<>]", "");
         declaredTerms.add(tokenName.toUpperCase());
-        writeToFile(tokenName.toUpperCase() + " : " + $l_reg_exp.value + ";");
+        if (tokenName.equals("SKIP_")) writeToFile(tokenName.toUpperCase() + " : " + $l_reg_exp.value + " -> skip;");
+        else writeToFile(tokenName.toUpperCase() + " : " + $l_reg_exp.value + ";");
     };
 
 l_reg_exp returns [String value]:
@@ -396,10 +397,10 @@ l_interval:
 
 L_START: 'LEXER_START';
 L_END: 'LEXER_END';
-TERM: '<' [A-Z_]+ '>';
+TERM: '<' [A-Z][A-Z_]+ '>';
 S_START: 'PARSER_START';
 S_END: 'PARSER_END';
-NON_TERM: '<' [a-z_]+ '>';
+NON_TERM: '<' [a-z][a-z_]+ '>';
 S_CHAR: '\'' ~['\r\n] '\'';
 QUANTIFICATORE: '?' | '+' | '*';
 CIFRA: [0-9];

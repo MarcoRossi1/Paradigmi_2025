@@ -1111,7 +1111,8 @@ public class GrammarParser extends Parser {
 
 			        String tokenName = (((L_ruleContext)_localctx).TERM!=null?((L_ruleContext)_localctx).TERM.getText():null).replaceAll("[<>]", "");
 			        declaredTerms.add(tokenName.toUpperCase());
-			        writeToFile(tokenName.toUpperCase() + " : " + ((L_ruleContext)_localctx).l_reg_exp.value + ";");
+			        if (tokenName.equals("SKIP_")) writeToFile(tokenName.toUpperCase() + " : " + ((L_ruleContext)_localctx).l_reg_exp.value + " -> skip;");
+			        else writeToFile(tokenName.toUpperCase() + " : " + ((L_ruleContext)_localctx).l_reg_exp.value + ";");
 			    
 			}
 		}

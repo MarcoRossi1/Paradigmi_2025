@@ -12,6 +12,7 @@ grammar Grammar;
     static Set<String> declaredTerms = new HashSet<>();
     static Set<String> usedNonTerms = new HashSet<>();
     static Set<String> usedTerms = new HashSet<>();
+    static Map<String, Set<String>> prodRules = new HashMap<>();
     static Map<String, Set<String>> dependencies = new HashMap<>();
 
     public static void startFile() {
@@ -52,6 +53,24 @@ grammar Grammar;
             // Controllo per la ricorsione sinistra indiretta
             checkIndirectLeftRecursion();
 
+            System.out.println("Numero di simboli terminali: " + declaredTerms.size());
+            System.out.println("Numero di simboli non terminali: " + declaredNonTerms.size());
+
+            List<Integer> rhsValues = new ArrayList<Integer>();
+            int numProdRules = 0;
+            for(String sxRule: prodRules.keySet()) {
+                numProdRules = numProdRules + prodRules.get(sxRule).size();
+                for (String dxRule: prodRules.get(sxRule))
+                    rhsValues.add(dxRule.split("\\s+").length);
+            }
+            System.out.println("Numero di regole di produzione: " + numProdRules);
+            System.out.println("Numero di regole con RHS unitario: " + rhsValues.stream().filter(i -> i.equals(1)).count());
+            System.out.println("RHS massimo: " + Collections.max(rhsValues));
+            System.out.println("RHS medio: " + rhsValues.stream().mapToInt(val -> val).average().orElse(0.0));
+
+            Float avgAlternatives = Float.valueOf(numProdRules) / Float.valueOf(prodRules.keySet().size());
+            System.out.println("Numero medio di alternative di una regola: " + String.format(Locale.US,"%.1f",avgAlternatives));
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -71,7 +90,7 @@ grammar Grammar;
     public static String[] removeLeftRecursion(String ruleName, String leftPart, String rightPart) {
         String nonRecursivePart = rightPart.trim();
         String recursivePart = cleanRule(leftPart, ruleName);
-        char op = checkOperators(splitIgnoringParentheses(recursivePart));
+        String op = checkOperators(splitIgnoringParentheses(recursivePart));
         StringBuilder buffer = new StringBuilder();
         for (String s: splitIgnoringParentheses(recursivePart)) {
             s = s.trim();
@@ -83,7 +102,7 @@ grammar Grammar;
             if (buffer.length() > 0) buffer.append(" | ");
             buffer.append(s);
         }
-        recursivePart = buffer.toString();
+        recursivePart = buffer.toString().trim();
         String rule1 = ruleName + " : " + "(" + nonRecursivePart + ")" + op + " " + ruleName + "_tail?";
         String rule2 = ruleName + "_tail" + " : " + "(" + recursivePart + ")" + " " + ruleName + "_tail?";
         return new String[]{rule1, rule2};
@@ -99,7 +118,7 @@ grammar Grammar;
         return result;
     }
 
-    public static char checkOperators(String[] input) {
+    public static String checkOperators(String[] input) {
         List<String> chars = new ArrayList<String>();
         for (String s: input) {
             s = s.trim();
@@ -108,13 +127,13 @@ grammar Grammar;
             if (op.equals("*") | op.equals("+") | op.equals("?")) chars.add(op);
         }
         if (chars.contains("?") && !chars.contains("+") && !chars.contains("*"))
-            return '?';
+            return "?";
         else if (!chars.contains("?") && chars.contains("+") && !chars.contains("*"))
-            return '+';
+            return "+";
         else if (chars.contains("?") && chars.contains("+") || chars.contains("*"))
-            return '*';
+            return "*";
         else
-            return ' ';
+            return "";
     }
 
     public static String[] splitIgnoringParentheses(String input) {
@@ -187,6 +206,7 @@ s_rule:
 
         for(String rule: splitIgnoringParentheses($s_expr.value.trim())) {
             rule = rule.trim();
+            if (rule != null) prodRules.computeIfAbsent(ruleName, k -> new HashSet<>()).add(rule);
             if (startsWithIgnoringBrackets(rule, ruleName)) {
                 if (recursiveParts.length() > 0) recursiveParts.append(" | ");
                 recursiveParts.append(rule);
@@ -195,8 +215,7 @@ s_rule:
                 if (nonRecursiveParts.length() > 0) nonRecursiveParts.append(" | ");
                 nonRecursiveParts.append(rule);
                 String token = rule.split("\\s+")[0].replaceAll("[\\(\\)\\?\\+\\*]", "");
-                if (token != null)
-                    dependencies.computeIfAbsent(ruleName, k -> new HashSet<>()).add(token);
+                if (token != null) dependencies.computeIfAbsent(ruleName, k -> new HashSet<>()).add(token);
             }
         }
 
@@ -397,10 +416,10 @@ l_interval:
 
 L_START: 'LEXER_START';
 L_END: 'LEXER_END';
-TERM: '<' [A-Z][A-Z_]+ '>';
+TERM: '<' [A-Z][A-Z_]* '>';
 S_START: 'PARSER_START';
 S_END: 'PARSER_END';
-NON_TERM: '<' [a-z][a-z_]+ '>';
+NON_TERM: '<' [a-z][a-z_]* '>';
 S_CHAR: '\'' ~['\r\n] '\'';
 QUANTIFICATORE: '?' | '+' | '*';
 CIFRA: [0-9];

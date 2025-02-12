@@ -1,9 +1,9 @@
 PARSER_START
-<stmt_list> ::= [<stmt_list>] <stmt> | <stmt> ;
+<stmt_list> ::= (<stmt_list> '+' <stmt> | <stmt> | <term>) ;
 <stmt> ::= <assign> | <print> ;
-<assign> ::= <IDENTIFIER> '=' <expr> ';' ;
+<assign> ::= (<IDENTIFIER> '=' <expr> ';' ) <expr> ;
 <print> ::= <PRINT> '(' <IDENTIFIER> ')' ';' ;
-<expr> ::= <expr> '+' <term> | <term> ;
+<expr> ::= (<expr> '+' <term> | <term>) ;
 <term> ::= <NUMBER> | <IDENTIFIER> ;
 PARSER_END
 

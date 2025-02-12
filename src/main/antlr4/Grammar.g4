@@ -12,7 +12,8 @@ grammar Grammar;
     static Set<String> declaredTerms = new HashSet<>();
     static Set<String> usedNonTerms = new HashSet<>();
     static Set<String> usedTerms = new HashSet<>();
-    static Map<String, Set<String>> prodRules = new HashMap<>();
+    static Map<String, Set<String>> prodRulesBuffer = new LinkedHashMap<>();
+    static Map<String, Set<String>> prodRules = new LinkedHashMap<>();
     static Map<String, Set<String>> dependencies = new HashMap<>();
 
     public static void startFile() {
@@ -63,8 +64,8 @@ grammar Grammar;
                 for (String dxRule: prodRules.get(sxRule))
                     rhsValues.add(dxRule.split("\\s+").length);
             }
-            System.out.println("Numero di regole di produzione: " + numProdRules);
-            System.out.println("Numero di regole con RHS unitario: " + rhsValues.stream().filter(i -> i.equals(1)).count());
+            System.out.println("Numero di prodRulesBuffer di produzione: " + numProdRules);
+            System.out.println("Numero di prodRulesBuffer con RHS unitario: " + rhsValues.stream().filter(i -> i.equals(1)).count());
             System.out.println("RHS massimo: " + Collections.max(rhsValues));
             System.out.println("RHS medio: " + rhsValues.stream().mapToInt(val -> val).average().orElse(0.0));
 
@@ -87,36 +88,45 @@ grammar Grammar;
     }
 
     // Funzione per rimuovere la ricorsione sinistra
-    public static String[] removeLeftRecursion(String ruleName, String leftPart, String rightPart) {
-        String nonRecursivePart = rightPart.trim();
-        String recursivePart = cleanRule(leftPart, ruleName);
-        String op = checkOperators(splitIgnoringParentheses(recursivePart));
-        StringBuilder buffer = new StringBuilder();
-        for (String s: splitIgnoringParentheses(recursivePart)) {
+    public static Map<String,List<String>> removeLeftRecursion(String ruleName, List<String> recursiveParts, List<String> nonRecursiveParts) {
+
+        List<String> buffer = new ArrayList<String>();
+        for(String rule: recursiveParts)
+            buffer.add(rule.replaceFirst(ruleName,""));
+        String op = checkOperators(buffer.toArray(new String[0]));
+
+        recursiveParts = new ArrayList<String>();
+        for (String s: buffer) {
             s = s.trim();
             while (startsWithIgnoringBrackets(s,"+") | startsWithIgnoringBrackets(s,"*") | startsWithIgnoringBrackets(s,"?")) {
                 if (startsWithIgnoringBrackets(s,"+")) s = s.replaceFirst("\\+", "");
                 else if (startsWithIgnoringBrackets(s,"*")) s = s.replaceFirst("\\*", "");
                 else if (startsWithIgnoringBrackets(s,"?")) s = s.replaceFirst("\\?", "");
             }
-            if (buffer.length() > 0) buffer.append(" | ");
-            buffer.append(s);
+            recursiveParts.add("(" + s + ")" + " " + ruleName + "_tail?");
         }
-        recursivePart = buffer.toString().trim();
-        String rule1 = ruleName + " : " + "(" + nonRecursivePart + ")" + op + " " + ruleName + "_tail?";
-        String rule2 = ruleName + "_tail" + " : " + "(" + recursivePart + ")" + " " + ruleName + "_tail?";
-        return new String[]{rule1, rule2};
+
+        buffer = new ArrayList<String>();
+        for(String s: nonRecursiveParts) {
+            s = s.trim();
+            buffer.add("(" + s + ")" + op + " " + ruleName + "_tail?");
+        }
+
+        Map<String,List<String>> refactoredRules = new LinkedHashMap<String,List<String>>();
+        refactoredRules.put(ruleName,buffer);
+        refactoredRules.put((ruleName+"_tail"),recursiveParts);
+        return refactoredRules;
     }
 
-    public static String cleanRule(String leftPart, String ruleName) {
-        String result = leftPart.replace(ruleName,"").trim();
+    /*public static String cleanRule(String leftPart, String ruleName) {
+        String result = leftPart.replaceFirst(ruleName,"").trim();
         String regex = "\\(\\s*([?+*]*)\\s*\\)";
-        // Ciclo per rimuovere ripetutamente le parentesi e i simboli
+        // Ciclo per rimuovere ripetutamente le parentesi
         while (result.matches(".*" + regex + ".*")) {
             result = result.replaceFirst(regex, "$1").trim();
         }
         return result;
-    }
+    }*/
 
     public static String checkOperators(String[] input) {
         List<String> chars = new ArrayList<String>();
@@ -136,7 +146,27 @@ grammar Grammar;
             return "";
     }
 
-    public static String[] splitIgnoringParentheses(String input) {
+    public static int findFirstBracket(String input) {
+        for (int i = 0; i < input.length(); i++) {
+            char currentChar = input.charAt(i);
+            if (currentChar == '(')
+                if ((i==0 || input.charAt(i-1)!='\'') || (i==input.length()-1 || input.charAt(i+1)!='\''))
+                    return i;
+        }
+        return -1;
+    }
+
+    public static int findLastBracket(String input) {
+        for (int i = input.length() - 1; i >= 0; i--) {
+            char currentChar = input.charAt(i);
+            if (currentChar == ')')
+                if ((i==0 || input.charAt(i-1)!='\'') || (i==input.length()-1 || input.charAt(i+1)!='\''))
+                    return i;
+        }
+        return -1;
+    }
+
+    public static String[] splitIgnoringBrackets(String input) {
         List<String> parts = new ArrayList<>();
         int openParentheses = 0;
         int lastSplitIndex = 0;
@@ -153,14 +183,11 @@ grammar Grammar;
             }
         }
 
-        // Aggiunge l'ultima parte della stringa
         parts.add(input.substring(lastSplitIndex));
-
         return parts.toArray(new String[0]);
     }
 
     public static boolean startsWithIgnoringBrackets(String input, String prefix) {
-        // Rimuove parentesi tonde, quadre e graffe iniziali con eventuali spazi
         String cleaned = input.replaceFirst("^[\\(]+\\s*", "");
         return cleaned.startsWith(prefix);
     }
@@ -185,6 +212,90 @@ grammar Grammar;
         }
         return false;
     }
+
+    private static List<String> convertAndRemoveBrackets(String rule) {
+        String regex = "(?<!')\\(|(?<!')\\)";
+        Pattern pattern = Pattern.compile(regex);
+        List<String> input = new ArrayList<String>();
+        List<String> output = new ArrayList<String>();
+        boolean isSplittable = false;
+        Matcher matcher = pattern.matcher(rule);
+        output.add(rule);
+        if (matcher.find())
+            isSplittable = true;
+        while (isSplittable) {
+            isSplittable = false;
+            List<String> temp = output;
+            output = new ArrayList<String>();
+            input = temp;
+            for(String s: input)
+                output.addAll(splitIfContainsBrackets(s));
+            for (String s: output) {
+                matcher = pattern.matcher(s);
+                if (matcher.find()) {
+                    isSplittable = true;
+                    break;
+                }
+            }
+        }
+        return output;
+    }
+    
+    public static List<String> splitIfContainsBrackets(String input) {
+        List<String> rules = new ArrayList<String>();
+        input = input.trim();
+
+        int startIdx = findFirstBracket(input);
+        int endIdx = findLastBracket(input);
+
+        if (startIdx == -1 || endIdx == -1 || startIdx > endIdx) {
+            rules.add(input);
+            return rules;
+        }
+
+        String start = input.substring(0, startIdx).trim();
+        String middle = input.substring(startIdx + 1, endIdx).trim();
+        String end;
+        String op;
+
+        if (input.length() > endIdx+1) {
+            op = String.valueOf(input.charAt(endIdx+1));
+        }
+        else
+            op = "";
+
+        if (!op.equals("*") && !op.equals("+") && !op.equals("?")) {
+            end = input.substring(endIdx + 1).trim();
+            op = "";
+        }
+        else
+            end = input.substring(endIdx + 2).trim();
+
+        for(String s: splitIgnoringBrackets(middle)) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(start);
+
+            if (sb.length()>0 && s.length()>0) sb.append(" ");
+            s = s.trim();
+            s = s.replaceAll(" ", op+" ");
+            s = s + op;
+
+            String regex = "[?+*]{2,}";
+            Pattern pattern = Pattern.compile(regex);
+            Matcher matcher = pattern.matcher(s);
+            String result = matcher.replaceAll(match -> {
+                String[] operators = match.group().split("");
+                return checkOperators(operators);
+            });
+            sb.append(result);
+
+            if (sb.length()>0 && end.length()>0) sb.append(" ");
+            sb.append(end);
+
+            rules.add(sb.toString());
+        }
+        return rules;
+    }    
 }
 
 start:
@@ -193,51 +304,62 @@ start:
     { closeFile(); };
 
 s_section:
-    S_START s_rule+ S_END;
+    S_START s_rule+ S_END {
+        for(String ruleName: prodRulesBuffer.keySet()) {
+            List<String> rules = new ArrayList<String>();
+            for(String r1: prodRulesBuffer.get(ruleName)) {
+                for(String r2: splitIgnoringBrackets(r1))
+                    rules.addAll(convertAndRemoveBrackets(r2));
+            }
+
+            List<String> recursiveParts = new ArrayList<String>();
+            List<String> nonRecursiveParts = new ArrayList<String>();
+
+            for(String rule: rules) {
+                rule = rule.trim();
+                if (startsWithIgnoringBrackets(rule, ruleName)) {
+                    recursiveParts.add(rule);
+                }
+                else {
+                    nonRecursiveParts.add(rule);
+                    String token = rule.split("\\s+")[0].replaceAll("[\\(\\)\\?\\+\\*]", "");
+                    if (token != null) dependencies.computeIfAbsent(ruleName, k -> new HashSet<>()).add(token);
+                }
+            }
+
+            Map<String,List<String>> newRules = new LinkedHashMap<String,List<String>>();
+            if (recursiveParts.size() > 0 && nonRecursiveParts.size() > 0)
+                newRules = removeLeftRecursion(ruleName, recursiveParts, nonRecursiveParts);
+            else if (recursiveParts.size() == 0 && nonRecursiveParts.size() > 0)
+                newRules.put(ruleName, nonRecursiveParts);
+            else if (recursiveParts.size() > 0 && nonRecursiveParts.size() == 0) {
+                newRules.put(ruleName, recursiveParts);
+                System.err.println("La regola sintattica " + ruleName + " presenta una ricorsione diretta infinita");
+            }
+
+
+            for(String name: newRules.keySet()) {
+                StringBuilder sb = new StringBuilder();
+                sb.append(name.toLowerCase() + " : ");
+                for(String rule: newRules.get(name)) {
+                    prodRules.computeIfAbsent(name, k -> new HashSet<>()).add(rule);
+                    sb.append(rule + " | ");
+                }
+                sb.setLength(sb.length() - 3);
+                writeToFile(sb.toString() + " {");
+                writeToFile("  // Inserisci qui le azioni semantiche");
+                writeToFile("};\n");
+            }
+
+        }
+    };
 
 s_rule:
     NON_TERM EQUAL s_expr ';'
     {
         String ruleName = $NON_TERM.text.replaceAll("[<>]", "");
         declaredNonTerms.add(ruleName.toLowerCase());
-
-        StringBuilder recursiveParts = new StringBuilder();
-        StringBuilder nonRecursiveParts = new StringBuilder();
-
-        for(String rule: splitIgnoringParentheses($s_expr.value.trim())) {
-            rule = rule.trim();
-            if (rule != null) prodRules.computeIfAbsent(ruleName, k -> new HashSet<>()).add(rule);
-            if (startsWithIgnoringBrackets(rule, ruleName)) {
-                if (recursiveParts.length() > 0) recursiveParts.append(" | ");
-                recursiveParts.append(rule);
-            }
-            else {
-                if (nonRecursiveParts.length() > 0) nonRecursiveParts.append(" | ");
-                nonRecursiveParts.append(rule);
-                String token = rule.split("\\s+")[0].replaceAll("[\\(\\)\\?\\+\\*]", "");
-                if (token != null) dependencies.computeIfAbsent(ruleName, k -> new HashSet<>()).add(token);
-            }
-        }
-
-        String leftPart = recursiveParts.toString();
-        String rightPart = nonRecursiveParts.toString();
-
-        List<String> rules = new ArrayList<String>();
-
-        if (leftPart.length() > 0 && rightPart.length() > 0)
-            rules = Arrays.asList(removeLeftRecursion(ruleName, leftPart, rightPart));
-        else if (leftPart.length() == 0 && rightPart.length() > 0)
-            rules.add(ruleName.toLowerCase() + " : " + rightPart);
-        else if (leftPart.length() > 0 && rightPart.length() == 0) {
-            rules.add(ruleName.toLowerCase() + " : " + leftPart);
-            System.err.println("La regola sintattica " + ruleName + " presenta una ricorsione diretta infinita");
-        }
-
-        for(String rule: rules) {
-            writeToFile(rule + " {");
-            writeToFile("  // Inserisci qui le azioni semantiche");
-            writeToFile("};\n");
-        }
+        prodRulesBuffer.computeIfAbsent(ruleName, k -> new HashSet<>()).add($s_expr.value.trim());
     };
 
 s_expr returns [String value]:

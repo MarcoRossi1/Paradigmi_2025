@@ -92,7 +92,7 @@ grammar Grammar;
 
         List<String> buffer = new ArrayList<String>();
         for(String rule: recursiveParts)
-            buffer.add(rule.replaceFirst(ruleName,""));
+            buffer.add(cleanRule(rule, ruleName));
         String op = checkOperators(buffer.toArray(new String[0]));
 
         recursiveParts = new ArrayList<String>();
@@ -103,13 +103,12 @@ grammar Grammar;
                 else if (startsWithIgnoringBrackets(s,"*")) s = s.replaceFirst("\\*", "");
                 else if (startsWithIgnoringBrackets(s,"?")) s = s.replaceFirst("\\?", "");
             }
-            recursiveParts.add("(" + s + ")" + " " + ruleName + "_tail?");
+            recursiveParts.add("(" + s.trim() + ")" + " " + ruleName + "_tail?");
         }
 
         buffer = new ArrayList<String>();
         for(String s: nonRecursiveParts) {
-            s = s.trim();
-            buffer.add("(" + s + ")" + op + " " + ruleName + "_tail?");
+            buffer.add("(" + s.trim() + ")" + op + " " + ruleName + "_tail?");
         }
 
         Map<String,List<String>> refactoredRules = new LinkedHashMap<String,List<String>>();
@@ -118,7 +117,7 @@ grammar Grammar;
         return refactoredRules;
     }
 
-    /*public static String cleanRule(String leftPart, String ruleName) {
+    public static String cleanRule(String leftPart, String ruleName) {
         String result = leftPart.replaceFirst(ruleName,"").trim();
         String regex = "\\(\\s*([?+*]*)\\s*\\)";
         // Ciclo per rimuovere ripetutamente le parentesi
@@ -126,7 +125,7 @@ grammar Grammar;
             result = result.replaceFirst(regex, "$1").trim();
         }
         return result;
-    }*/
+    }
 
     public static String checkOperators(String[] input) {
         List<String> chars = new ArrayList<String>();
@@ -146,26 +145,6 @@ grammar Grammar;
             return "";
     }
 
-    public static int findFirstBracket(String input) {
-        for (int i = 0; i < input.length(); i++) {
-            char currentChar = input.charAt(i);
-            if (currentChar == '(')
-                if ((i==0 || input.charAt(i-1)!='\'') || (i==input.length()-1 || input.charAt(i+1)!='\''))
-                    return i;
-        }
-        return -1;
-    }
-
-    public static int findLastBracket(String input) {
-        for (int i = input.length() - 1; i >= 0; i--) {
-            char currentChar = input.charAt(i);
-            if (currentChar == ')')
-                if ((i==0 || input.charAt(i-1)!='\'') || (i==input.length()-1 || input.charAt(i+1)!='\''))
-                    return i;
-        }
-        return -1;
-    }
-
     public static String[] splitIgnoringBrackets(String input) {
         List<String> parts = new ArrayList<>();
         int openParentheses = 0;
@@ -177,7 +156,9 @@ grammar Grammar;
                 openParentheses++;
             } else if (c == ')') {
                 openParentheses--;
-            } else if (c == '|' && openParentheses == 0) {
+            } else if (c == '|' && openParentheses == 0 &&
+                ((i==0 || input.charAt(i-1)!='\'') ||
+                (i==input.length()-1 || input.charAt(i+1)!='\''))) {
                 parts.add(input.substring(lastSplitIndex, i));
                 lastSplitIndex = i + 1;
             }
@@ -213,15 +194,12 @@ grammar Grammar;
         return false;
     }
 
-    private static List<String> convertAndRemoveBrackets(String rule) {
-        String regex = "(?<!')\\(|(?<!')\\)";
-        Pattern pattern = Pattern.compile(regex);
+    private static List<String> splitInsideBrackets(String rule) {
         List<String> input = new ArrayList<String>();
         List<String> output = new ArrayList<String>();
         boolean isSplittable = false;
-        Matcher matcher = pattern.matcher(rule);
         output.add(rule);
-        if (matcher.find())
+        if (findFirstOr(rule) != -1)
             isSplittable = true;
         while (isSplittable) {
             isSplittable = false;
@@ -229,10 +207,9 @@ grammar Grammar;
             output = new ArrayList<String>();
             input = temp;
             for(String s: input)
-                output.addAll(splitIfContainsBrackets(s));
+                output.addAll(refactorBrackets(s));
             for (String s: output) {
-                matcher = pattern.matcher(s);
-                if (matcher.find()) {
+                if (findFirstOr(s) != -1) {
                     isSplittable = true;
                     break;
                 }
@@ -240,14 +217,49 @@ grammar Grammar;
         }
         return output;
     }
+
+    public static int findOpenBracket(String input, int index) {
+        for (int i = index; i >= 0; i--) {
+            char currentChar = input.charAt(i);
+            if (currentChar == '(')
+                if ((i==0 || input.charAt(i-1)!='\'') || (i==input.length()-1 || input.charAt(i+1)!='\''))
+                    return i;
+        }
+        return -1;
+    }
+
+    public static int findClosedBracket(String input, int index) {
+        for (int i = index; i < input.length(); i++) {
+            char currentChar = input.charAt(i);
+            if (currentChar == ')')
+                if ((i==0 || input.charAt(i-1)!='\'') || (i==input.length()-1 || input.charAt(i+1)!='\''))
+                    return i;
+        }
+        return -1;
+    }
+
+    public static int findFirstOr(String input) {
+        for (int i = 0; i < input.length(); i++) {
+            char currentChar = input.charAt(i);
+            if (currentChar == '|')
+                if ((i==0 || input.charAt(i-1)!='\'') || (i==input.length()-1 || input.charAt(i+1)!='\''))
+                    return i;
+        }
+        return -1;
+    }
     
-    public static List<String> splitIfContainsBrackets(String input) {
+    public static List<String> refactorBrackets(String input) {
         List<String> rules = new ArrayList<String>();
         input = input.trim();
 
-        int startIdx = findFirstBracket(input);
-        int endIdx = findLastBracket(input);
-
+        int orIdx = findFirstOr(input);
+        if (orIdx == -1) {
+            rules.add(input);
+            return rules;
+        }
+        
+        int startIdx = findOpenBracket(input, orIdx);
+        int endIdx = findClosedBracket(input, orIdx);
         if (startIdx == -1 || endIdx == -1 || startIdx > endIdx) {
             rules.add(input);
             return rules;
@@ -277,17 +289,17 @@ grammar Grammar;
 
             if (sb.length()>0 && s.length()>0) sb.append(" ");
             s = s.trim();
-            s = s.replaceAll(" ", op+" ");
-            s = s + op;
+            if (!op.equals("")) s = "(" + s + ")" + op;
+            sb.append(s);
 
-            String regex = "[?+*]{2,}";
+            /*String regex = "[?+*]{2,}";
             Pattern pattern = Pattern.compile(regex);
             Matcher matcher = pattern.matcher(s);
             String result = matcher.replaceAll(match -> {
                 String[] operators = match.group().split("");
                 return checkOperators(operators);
             });
-            sb.append(result);
+            sb.append(result);*/
 
             if (sb.length()>0 && end.length()>0) sb.append(" ");
             sb.append(end);
@@ -309,7 +321,7 @@ s_section:
             List<String> rules = new ArrayList<String>();
             for(String r1: prodRulesBuffer.get(ruleName)) {
                 for(String r2: splitIgnoringBrackets(r1))
-                    rules.addAll(convertAndRemoveBrackets(r2));
+                    rules.addAll(splitInsideBrackets(r2));
             }
 
             List<String> recursiveParts = new ArrayList<String>();

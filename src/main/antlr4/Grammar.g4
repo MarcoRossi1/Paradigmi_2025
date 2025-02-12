@@ -23,13 +23,13 @@ grammar Grammar;
     public static void startFile() {
         try {
             writer = new FileWriter("OutputGrammar.g4");
-            writer.write("grammar OutputGrammar;\n\n");
-            writer.write("@header {\n");
-            writer.write("  // Inserisci qui gli import\n");
-            writer.write("}\n\n");
-            writer.write("@members {\n");
-            writer.write("  // Inserisci qui il tuo codice\n");
-            writer.write("}\n\n");
+            writeToFile("grammar OutputGrammar;\n");
+            writeToFile("@header {");
+            writeToFile("  // Inserisci qui gli import");
+            writeToFile("}\n");
+            writeToFile("@members {");
+            writeToFile("  // Inserisci qui il tuo codice");
+            writeToFile("}\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -37,33 +37,36 @@ grammar Grammar;
 
     public static void closeFile() {
         try {
+            // OTTIMIZZAZIONI
             prodRules = manageRecursion(prodRulesBuffer);
+
+            // SCRITTURE SUL FILE
             writeRulesToFile(prodRules,lexerRules);
 
-            if (writer != null) {
-                writer.close();
-            }
-
-            // Controllo semantico: verifica che tutti i NON_TERM usati siano stati dichiarati
+            // CONTROLLO SEMANTICO: verifica che tutti i NON_TERM usati siano stati dichiarati
             for (String token : usedNonTerms) {
                 if (!prodRulesBuffer.keySet().contains(token)) {
                     System.err.println("Errore: Il NON_TERM '" + token + "' è usato ma non dichiarato.");
                 }
             }
 
-            // Controllo semantico: verifica che tutti i TERM usati siano stati dichiarati
+            // CONTROLLO SEMANTICO: verifica che tutti i TERM usati siano stati dichiarati
             for (String token : usedTerms) {
                 if (!lexerRules.keySet().contains(token)) {
                     System.err.println("Errore: Il TERM '" + token + "' è usato ma non dichiarato.");
                 }
             }
 
+            // CONTROLLO SEMANTICO: ricorsione indiretta sinistra
             checkIndirectLeftRecursion(prodRules);
+
+            // CALCOLO DI METRICHE
             System.out.println("\nMETRICHE APPLICATE ALLA GRAMMATICA IN INPUT");
             calculateMetrics(prodRulesBuffer);
             System.out.println("\nMETRICHE APPLICATE ALLA GRAMMATICA IN OUTPUT");
             calculateMetrics(prodRules);
 
+            if (writer != null) writer.close();
 
         } catch (IOException e) {
             e.printStackTrace();

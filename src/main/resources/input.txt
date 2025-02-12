@@ -1,10 +1,10 @@
 PARSER_START
-<stmt_list> ::= [<stmt_list>] '+' <stmt> | <term> ;
+<stmt_list> ::= {[<stmt_list>]} '+' <stmt> | <term> ;
 <stmt> ::= <stmt> <assign> | <print> ;
 <assign> ::= [(<IDENTIFIER> '=' <expr> ';')] ;
 <print> ::= <PRINT> '(' <IDENTIFIER> ')' ';' ;
 <expr> ::= <expr> '+' <term> | <term> ;
-<term> ::= <NUMBER> | <IDENTIFIER> ;
+<term> ::= <stmt_list> | <IDENTIFIER> ;
 PARSER_END
 
 LEXER_START

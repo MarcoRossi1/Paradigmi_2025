@@ -8,7 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class TestLexerParser {
-    public static void main(String[] args) {
+    /*public static void main(String[] args) {
         // Lista di input da testare
         List<String> testInputs = List.of(
                 "D"
@@ -50,5 +50,5 @@ public class TestLexerParser {
         } catch (Exception e) {
             System.out.println("Errore durante il parsing: " + e.getMessage());
         }
-    }
+    }*/
 }

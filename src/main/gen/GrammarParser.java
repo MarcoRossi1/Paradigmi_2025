@@ -104,11 +104,15 @@ public class GrammarParser extends Parser {
 
 
 	    static FileWriter writer;
-	    static Set<String> declaredNonTerms = new HashSet<>();
-	    static Set<String> declaredTerms = new HashSet<>();
+
+	    static Map<String, String> lexerRules = new LinkedHashMap<>();
 	    static Set<String> usedNonTerms = new HashSet<>();
 	    static Set<String> usedTerms = new HashSet<>();
+
+	    // INPUT
 	    static Map<String, Set<String>> prodRulesBuffer = new LinkedHashMap<>();
+
+	    // OUTPUT
 	    static Map<String, Set<String>> prodRules = new LinkedHashMap<>();
 	    static Map<String, Set<String>> dependencies = new HashMap<>();
 
@@ -129,44 +133,33 @@ public class GrammarParser extends Parser {
 
 	    public static void closeFile() {
 	        try {
+	            prodRules = manageRecursion(prodRulesBuffer);
+	            writeRulesToFile(prodRules,lexerRules);
+
 	            if (writer != null) {
 	                writer.close();
 	            }
 
 	            // Controllo semantico: verifica che tutti i NON_TERM usati siano stati dichiarati
 	            for (String token : usedNonTerms) {
-	                if (!declaredNonTerms.contains(token)) {
+	                if (!prodRulesBuffer.keySet().contains(token)) {
 	                    System.err.println("Errore: Il NON_TERM '" + token + "' è usato ma non dichiarato.");
 	                }
 	            }
 
 	            // Controllo semantico: verifica che tutti i TERM usati siano stati dichiarati
 	            for (String token : usedTerms) {
-	                if (!declaredTerms.contains(token)) {
+	                if (!lexerRules.keySet().contains(token)) {
 	                    System.err.println("Errore: Il TERM '" + token + "' è usato ma non dichiarato.");
 	                }
 	            }
 
-	            // Controllo per la ricorsione sinistra indiretta
-	            checkIndirectLeftRecursion();
+	            checkIndirectLeftRecursion(prodRules);
+	            System.out.println("\nMETRICHE APPLICATE ALLA GRAMMATICA IN INPUT");
+	            calculateMetrics(prodRulesBuffer);
+	            System.out.println("\nMETRICHE APPLICATE ALLA GRAMMATICA IN OUTPUT");
+	            calculateMetrics(prodRules);
 
-	            System.out.println("Numero di simboli terminali: " + declaredTerms.size());
-	            System.out.println("Numero di simboli non terminali: " + declaredNonTerms.size());
-
-	            List<Integer> rhsValues = new ArrayList<Integer>();
-	            int numProdRules = 0;
-	            for(String sxRule: prodRules.keySet()) {
-	                numProdRules = numProdRules + prodRules.get(sxRule).size();
-	                for (String dxRule: prodRules.get(sxRule))
-	                    rhsValues.add(dxRule.split("\\s+").length);
-	            }
-	            System.out.println("Numero di prodRulesBuffer di produzione: " + numProdRules);
-	            System.out.println("Numero di prodRulesBuffer con RHS unitario: " + rhsValues.stream().filter(i -> i.equals(1)).count());
-	            System.out.println("RHS massimo: " + Collections.max(rhsValues));
-	            System.out.println("RHS medio: " + rhsValues.stream().mapToInt(val -> val).average().orElse(0.0));
-
-	            Float avgAlternatives = Float.valueOf(numProdRules) / Float.valueOf(prodRules.keySet().size());
-	            System.out.println("Numero medio di alternative di una regola: " + String.format(Locale.US,"%.1f",avgAlternatives));
 
 	        } catch (IOException e) {
 	            e.printStackTrace();
@@ -183,13 +176,86 @@ public class GrammarParser extends Parser {
 	        }
 	    }
 
-	    // Funzione per rimuovere la ricorsione sinistra
-	    public static Map<String,List<String>> removeLeftRecursion(String ruleName, List<String> recursiveParts, List<String> nonRecursiveParts) {
+	    public static void writeRulesToFile(Map<String,Set<String>> prodRules, Map<String,String> lexerRules) {
+	        for(String name: prodRules.keySet()) {
+	            StringBuilder sb = new StringBuilder();
+	            sb.append(name.toLowerCase() + " : ");
+	            for(String rule: prodRules.get(name)) sb.append(rule + " | ");
+	            sb.setLength(sb.length() - 3);
+	            writeToFile(sb.toString() + " {");
+	            writeToFile("  // Inserisci qui le azioni semantiche");
+	            writeToFile("};\n");
+	        }
+	        for(String name: lexerRules.keySet()) {
+	            writeToFile(name + " : " + lexerRules.get(name) + ";");
+	        }
+	    }
 
+	    public static void calculateMetrics(Map<String,Set<String>> rules) {
+	        System.out.println("Numero di simboli terminali: " + lexerRules.keySet().size());
+	        System.out.println("Numero di simboli non terminali: " + rules.keySet().size());
+
+	        List<Integer> rhsValues = new ArrayList<Integer>();
+	        int numProdRules = 0;
+	        for(String sxRule: rules.keySet()) {
+	            numProdRules = numProdRules + rules.get(sxRule).size();
+	            for (String dxRule: rules.get(sxRule))
+	                rhsValues.add(dxRule.split("\\s+").length);
+	        }
+
+	        System.out.println("Numero di regole di produzione: " + numProdRules);
+	        System.out.println("Numero di regole di produzione con RHS unitario: "
+	            + rhsValues.stream().filter(i -> i.equals(1)).count());
+	        System.out.println("RHS massimo: " + Collections.max(rhsValues));
+	        double rhsAverage = rhsValues.stream().mapToInt(val -> val).average().orElse(0.0);
+	        System.out.println("RHS medio: " + String.format("%.1f", rhsAverage));
+
+	        Float avgAlternatives = Float.valueOf(numProdRules) / Float.valueOf(prodRules.keySet().size());
+	        System.out.println("Numero medio di regole alternative di un simbolo non terminale: "
+	            + String.format("%.1f",avgAlternatives));
+	    }
+
+	    public static Map<String,Set<String>> manageRecursion(Map<String,Set<String>> prodRulesOld) {
+	        Map<String,Set<String>> prodRulesNew = new LinkedHashMap<String,Set<String>>();
+	        for (String ruleName: prodRulesOld.keySet()) {
+	            List<String> recursiveParts = new ArrayList<String>();
+	            List<String> nonRecursiveParts = new ArrayList<String>();
+
+	            for(String rule: prodRulesOld.get(ruleName)) {
+	                rule = rule.trim();
+	                if (startsWithIgnoringBrackets(rule, ruleName)) {
+	                    recursiveParts.add(rule);
+	                }
+	                else {
+	                    nonRecursiveParts.add(rule);
+	                    String token = rule.split("\\s+")[0].replaceAll("[\\(\\)\\?\\+\\*]", "");
+	                    if (token != null) dependencies.computeIfAbsent(ruleName, k -> new HashSet<>()).add(token);
+	                }
+	            }
+
+	            Map<String,List<String>> newRules = new LinkedHashMap<String,List<String>>();
+	            if (recursiveParts.size() > 0 && nonRecursiveParts.size() > 0)
+	                newRules = removeLeftRecursion(ruleName, recursiveParts, nonRecursiveParts);
+	            else if (recursiveParts.size() == 0 && nonRecursiveParts.size() > 0)
+	                newRules.put(ruleName, nonRecursiveParts);
+	            else if (recursiveParts.size() > 0 && nonRecursiveParts.size() == 0) {
+	                newRules.put(ruleName, recursiveParts);
+	                System.err.println("La regola sintattica " + ruleName + " presenta una ricorsione diretta infinita");
+	            }
+
+	            for(String name: newRules.keySet())
+	                for(String rule: newRules.get(name))
+	                    prodRulesNew.computeIfAbsent(name, k -> new HashSet<>()).add(rule);
+	        }
+	        
+	        return prodRulesNew;
+	    }
+
+	    public static Map<String,List<String>> removeLeftRecursion(String ruleName, List<String> recursiveParts, List<String> nonRecursiveParts) {
 	        List<String> buffer = new ArrayList<String>();
 	        for(String rule: recursiveParts)
 	            buffer.add(cleanRule(rule, ruleName));
-	        String op = checkOperators(buffer.toArray(new String[0]));
+	        String op = convertOperators(buffer.toArray(new String[0]));
 
 	        recursiveParts = new ArrayList<String>();
 	        for (String s: buffer) {
@@ -223,7 +289,7 @@ public class GrammarParser extends Parser {
 	        return result;
 	    }
 
-	    public static String checkOperators(String[] input) {
+	    public static String convertOperators(String[] input) {
 	        List<String> chars = new ArrayList<String>();
 	        for (String s: input) {
 	            s = s.trim();
@@ -260,7 +326,7 @@ public class GrammarParser extends Parser {
 	            }
 	        }
 
-	        parts.add(input.substring(lastSplitIndex));
+	        parts.add(input.substring(lastSplitIndex).trim());
 	        return parts.toArray(new String[0]);
 	    }
 
@@ -269,8 +335,8 @@ public class GrammarParser extends Parser {
 	        return cleaned.startsWith(prefix);
 	    }
 
-	    public static void checkIndirectLeftRecursion() {
-	        for (String rule : declaredNonTerms) {
+	    public static void checkIndirectLeftRecursion(Map<String,Set<String>> rules) {
+	        for (String rule : rules.keySet()) {
 	            Set<String> visited = new HashSet<>();
 	            if (hasIndirectLeftRecursion(rule, rule, visited)) {
 	                System.err.println("Warning: Ricorsione sinistra indiretta trovata in " + rule);
@@ -387,15 +453,6 @@ public class GrammarParser extends Parser {
 	            s = s.trim();
 	            if (!op.equals("")) s = "(" + s + ")" + op;
 	            sb.append(s);
-
-	            /*String regex = "[?+*]{2,}";
-	            Pattern pattern = Pattern.compile(regex);
-	            Matcher matcher = pattern.matcher(s);
-	            String result = matcher.replaceAll(match -> {
-	                String[] operators = match.group().split("");
-	                return checkOperators(operators);
-	            });
-	            sb.append(result);*/
 
 	            if (sb.length()>0 && end.length()>0) sb.append(" ");
 	            sb.append(end);
@@ -520,53 +577,16 @@ public class GrammarParser extends Parser {
 			setState(48);
 			match(S_END);
 
+			        Map<String,Set<String>> prodRulesOld = new LinkedHashMap<String,Set<String>>();
 			        for(String ruleName: prodRulesBuffer.keySet()) {
 			            List<String> rules = new ArrayList<String>();
 			            for(String r1: prodRulesBuffer.get(ruleName)) {
 			                for(String r2: splitIgnoringBrackets(r1))
 			                    rules.addAll(splitInsideBrackets(r2));
 			            }
-
-			            List<String> recursiveParts = new ArrayList<String>();
-			            List<String> nonRecursiveParts = new ArrayList<String>();
-
-			            for(String rule: rules) {
-			                rule = rule.trim();
-			                if (startsWithIgnoringBrackets(rule, ruleName)) {
-			                    recursiveParts.add(rule);
-			                }
-			                else {
-			                    nonRecursiveParts.add(rule);
-			                    String token = rule.split("\\s+")[0].replaceAll("[\\(\\)\\?\\+\\*]", "");
-			                    if (token != null) dependencies.computeIfAbsent(ruleName, k -> new HashSet<>()).add(token);
-			                }
-			            }
-
-			            Map<String,List<String>> newRules = new LinkedHashMap<String,List<String>>();
-			            if (recursiveParts.size() > 0 && nonRecursiveParts.size() > 0)
-			                newRules = removeLeftRecursion(ruleName, recursiveParts, nonRecursiveParts);
-			            else if (recursiveParts.size() == 0 && nonRecursiveParts.size() > 0)
-			                newRules.put(ruleName, nonRecursiveParts);
-			            else if (recursiveParts.size() > 0 && nonRecursiveParts.size() == 0) {
-			                newRules.put(ruleName, recursiveParts);
-			                System.err.println("La regola sintattica " + ruleName + " presenta una ricorsione diretta infinita");
-			            }
-
-
-			            for(String name: newRules.keySet()) {
-			                StringBuilder sb = new StringBuilder();
-			                sb.append(name.toLowerCase() + " : ");
-			                for(String rule: newRules.get(name)) {
-			                    prodRules.computeIfAbsent(name, k -> new HashSet<>()).add(rule);
-			                    sb.append(rule + " | ");
-			                }
-			                sb.setLength(sb.length() - 3);
-			                writeToFile(sb.toString() + " {");
-			                writeToFile("  // Inserisci qui le azioni semantiche");
-			                writeToFile("};\n");
-			            }
-
+			            prodRulesOld.put(ruleName, new HashSet<String>(rules));
 			        }
+			        prodRulesBuffer = prodRulesOld;
 			    
 			}
 		}
@@ -625,7 +645,6 @@ public class GrammarParser extends Parser {
 			match(T__0);
 
 			        String ruleName = (((S_ruleContext)_localctx).NON_TERM!=null?((S_ruleContext)_localctx).NON_TERM.getText():null).replaceAll("[<>]", "");
-			        declaredNonTerms.add(ruleName.toLowerCase());
 			        prodRulesBuffer.computeIfAbsent(ruleName, k -> new HashSet<>()).add(((S_ruleContext)_localctx).s_expr.value.trim());
 			    
 			}
@@ -1264,9 +1283,9 @@ public class GrammarParser extends Parser {
 			match(T__0);
 
 			        String tokenName = (((L_ruleContext)_localctx).TERM!=null?((L_ruleContext)_localctx).TERM.getText():null).replaceAll("[<>]", "");
-			        declaredTerms.add(tokenName.toUpperCase());
-			        if (tokenName.equals("SKIP_")) writeToFile(tokenName.toUpperCase() + " : " + ((L_ruleContext)_localctx).l_reg_exp.value + " -> skip;");
-			        else writeToFile(tokenName.toUpperCase() + " : " + ((L_ruleContext)_localctx).l_reg_exp.value + ";");
+			        String regExp = ((L_ruleContext)_localctx).l_reg_exp.value;
+			        if (tokenName.equals("SKIP_")) regExp = ((L_ruleContext)_localctx).l_reg_exp.value + " -> skip";
+			        lexerRules.put(tokenName, regExp);
 			    
 			}
 		}

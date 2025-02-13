@@ -22,16 +22,43 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
     // OUTPUT
     static Map<String, Set<String>> prodRules = new LinkedHashMap<>();
     static Map<String, Set<String>> dependencies = new HashMap<>();
+
     public static void startFile() {
         try {
             writer = new FileWriter("OutputGrammar.jj");
-            writeToFile("grammar OutputGrammar;\n");
-            writeToFile("@header {");
-            writeToFile("  // Inserisci qui gli import");
-            writeToFile("}\n");
-            writeToFile("@members {");
-            writeToFile("  // Inserisci qui il tuo codice");
-            writeToFile("}\n");
+            writeToFile("options {\n" +
+                    "    LOOKAHEAD = 1;                      // Lookahead di default per l'analisi sintattica\n" +
+                    "    CHOICE_AMBIGUITY_CHECK = 2;         // Livello di controllo per ambiguità nelle scelte\n" +
+                    "    OTHER_AMBIGUITY_CHECK = 1;          // Livello di controllo per ambiguità in altre costruzioni\n" +
+                    "    STATIC = true;                      // Genera metodi e campi statici\n" +
+                    "    DEBUG_PARSER = false;               // Disabilita il debug del parser\n" +
+                    "    DEBUG_LOOKAHEAD = false;            // Disabilita il debug del lookahead\n" +
+                    "    DEBUG_TOKEN_MANAGER = false;        // Disabilita il debug del gestore di token\n" +
+                    "    ERROR_REPORTING = true;             // Abilita la segnalazione degli errori\n" +
+                    "    JAVA_UNICODE_ESCAPE = false;        // Disabilita l'uso di escape Unicode nei file generati\n" +
+                    "    UNICODE_INPUT = false;              // Disabilita l'input Unicode\n" +
+                    "    IGNORE_CASE = false;                // Distingue tra maiuscole e minuscole nei token\n" +
+                    "    USER_TOKEN_MANAGER = false;         // Utilizza il gestore di token predefinito\n" +
+                    "    USER_CHAR_STREAM = false;           // Utilizza il flusso di caratteri predefinito\n" +
+                    "    BUILD_PARSER = true;                // Genera il codice per il parser\n" +
+                    "    BUILD_TOKEN_MANAGER = true;         // Genera il codice per il gestore di token\n" +
+                    "    TOKEN_EXTENDS = \"\";                 // Nessuna classe base personalizzata per i token\n" +
+                    "    TOKEN_FACTORY = \"\";                 // Nessuna fabbrica di token personalizzata\n" +
+                    "    SANITY_CHECK = true;                // Abilita controlli di sanità durante la generazione\n" +
+                    "    FORCE_LA_CHECK = false;             // Disabilita il controllo forzato del lookahead\n" +
+                    "    COMMON_TOKEN_ACTION = false;        // Disabilita azioni comuni sui token\n" +
+                    "    CACHE_TOKENS = false;               // Disabilita la memorizzazione nella cache dei token\n" +
+                    "    OUTPUT_DIRECTORY = \"\";              // Directory di output predefinita (stessa del file .jj)\n" +
+                    "    JDK_VERSION = \"1.5\";                // Versione di JDK target per il codice generato\n" +
+                    "    GRAMMAR_ENCODING = \"\";              // Codifica predefinita del file di grammatica\n" +
+                    "    KEEP_LINE_COLUMN = true;            // Mantieni informazioni su righe e colonne nei token\n" +
+                    "}\n");
+            writeToFile("PARSER_BEGIN(OutputGrammar)");
+            writeToFile("public class OutputGrammar {}");
+            writeToFile("PARSER_END(OutputGrammar)\n");
+            writeToFile("TOKEN_MGR_DECLS: {\n" +
+                    "   /* Inserisci qui variabili e metodi per l'analizzatore lessicale */\n" +
+                    "}\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -40,10 +67,20 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
     public static void closeFile() {
         try {
             // OTTIMIZZAZIONI
-            prodRules = manageRecursion(prodRulesBuffer);
+            prodRules = removeUselessRules(prodRulesBuffer);
+            prodRules = removeRedundantRules(prodRules);
+            prodRules = manageRecursion(prodRules);
+
+            prodRulesBuffer = addBracketsToRules(prodRulesBuffer);
+            prodRules = addBracketsToRules(prodRules);
 
             // SCRITTURE SUL FILE
             writeRulesToFile(prodRules,lexerRules);
+
+            // CONTROLLO SEMANTICO: verifica se da alcune regole non si può raggiungere un simbolo terminale
+            for (String rule : checkIfTermIsReachable(prodRules)) {
+                System.err.println("Warning: Dal simbolo non terminale '" + rule + "' non è possibile raggiungere nessun simbolo terminale.");
+            }
 
             // CONTROLLO SEMANTICO: verifica che tutti i NON_TERM usati siano stati dichiarati
             for (String token : usedNonTerms) {
@@ -60,7 +97,9 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
             }
 
             // CONTROLLO SEMANTICO: ricorsione indiretta sinistra
-            checkIndirectLeftRecursion(prodRules);
+            for (String rule: checkIndirectLeftRecursion(prodRules)) {
+                System.err.println("Warning: Ricorsione sinistra indiretta trovata in " + rule);
+            }
 
             // CALCOLO DI METRICHE
             System.out.println("\nMETRICHE APPLICATE ALLA GRAMMATICA IN INPUT");
@@ -86,25 +125,25 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
     }
 
     public static void writeRulesToFile(Map<String,Set<String>> prodRules, Map<String,String> lexerRules) {
-        for(String name: prodRules.keySet()) {
-            StringBuilder sb = new StringBuilder();
-            sb.append(name.toLowerCase()).append(" : ");
-            for(String rule: prodRules.get(name)) sb.append(rule).append(" | ");
-            sb.setLength(sb.length() - 3);
-            writeToFile(sb + " {");
-            writeToFile("  // Inserisci qui le azioni semantiche");
-            writeToFile("};\n");
-        }
-        writeToFile("TOKEN : {");
+        writeToFile("TOKEN: {");
         int i = 0;
         for(String name: lexerRules.keySet()) {
             if (i == 0)
-                writeToFile("   <" + name + " : " + lexerRules.get(name) + ">");
+                writeToFile("   " + name.replace('>', ':') + " " + lexerRules.get(name) + ">");
             else
-                writeToFile("   | <" + name + " : " + lexerRules.get(name) + ">");
+                writeToFile("   | " + name.replace('>', ':') + " " + lexerRules.get(name) + ">");
             i++;
         }
-        writeToFile("}");
+        writeToFile("}\n");
+
+        for(String name: prodRules.keySet()) {
+            writeToFile("void " + name + "():");
+            writeToFile("   { /*Inserisci qui le azioni semantiche*/ }");
+            StringBuilder sb = new StringBuilder();
+            for(String rule: prodRules.get(name)) sb.append(rule).append(" | ");
+            sb.setLength(sb.length() - 3);
+            writeToFile("   { " + sb + " }\n");
+        }
     }
 
     public static void calculateMetrics(Map<String,Set<String>> rules) {
@@ -129,6 +168,82 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
         Float avgAlternatives = (float) numProdRules / (float) prodRules.size();
         System.out.println("Numero medio di regole alternative di un simbolo non terminale: "
                 + String.format("%.1f",avgAlternatives));
+    }
+
+    public static Map<String,Set<String>> addBracketsToRules(Map<String,Set<String>> rules) {
+        Map<String,Set<String>> newRules = new LinkedHashMap<>();
+        for (String ruleName : rules.keySet())
+            for (String rule : rules.get(ruleName))
+                newRules.computeIfAbsent(ruleName, _ -> new HashSet<>()).add(addBracketsToNonTerms(rule));
+        return newRules;
+    }
+
+    public static String addBracketsToNonTerms(String input) {
+        Pattern pattern = Pattern.compile("\\b[a-z_]+\\b(?!\")");
+        Matcher matcher = pattern.matcher(input);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find())
+            matcher.appendReplacement(sb, matcher.group() + "()");
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
+    public static Map<String,Set<String>> removeUselessRules(Map<String,Set<String>> rules) {
+        List<String> uselessRules = findUselessRules(rules);
+        if (uselessRules.isEmpty()) return rules;
+        Map<String,Set<String>> newRules = new LinkedHashMap<>();
+        for (String uselessRuleName : uselessRules) {
+            String buffer = rules.get(uselessRuleName).iterator().next().trim();
+            for (String ruleName: rules.keySet()) {
+                for (String rule : rules.get(ruleName)) {
+                    String newRule = rule.replaceAll(uselessRuleName + "(?=\\b)", buffer).trim();
+                    newRules.computeIfAbsent(ruleName, _ -> new HashSet<>()).add(newRule);
+                }
+            }
+        }
+        for (String uselessRuleName : uselessRules)
+            newRules.remove(uselessRuleName);
+        return newRules;
+    }
+
+    public static List<String> findUselessRules(Map<String,Set<String>> rules) {
+        List<String> uselessRules = new ArrayList<>();
+        for (String ruleName : rules.keySet()) {
+            if (rules.get(ruleName).size() == 1) {
+                String rule = rules.get(ruleName).iterator().next();
+                if (rule.split("\\s+").length == 1)
+                    uselessRules.add(ruleName);
+            }
+        }
+        return uselessRules;
+    }
+
+    public static Map<String,Set<String>> removeRedundantRules(Map<String,Set<String>> rules) {
+        Map<String,String> redundantRules = findRedundantRules(rules);
+        if (redundantRules.isEmpty()) return rules;
+        Map<String,Set<String>> newRules = new LinkedHashMap<>();
+        for (String redundantRuleName : redundantRules.keySet()) {;
+            for (String ruleName: rules.keySet()) {
+                for (String rule : rules.get(ruleName)) {
+                    String newRule = rule.replaceAll(redundantRuleName + "(?=\\b)", redundantRules.get(redundantRuleName)).trim();
+                    newRules.computeIfAbsent(ruleName, _ -> new HashSet<>()).add(newRule);
+                }
+            }
+        }
+        for (String redundantRuleName : redundantRules.keySet())
+            newRules.remove(redundantRuleName);
+        return newRules;
+    }
+
+    public static Map<String,String> findRedundantRules(Map<String,Set<String>> rules) {
+        Map<String,String> redundantRules = new HashMap<>();
+        Map<Set<String>,String> buffer = new HashMap<>();
+        for (String ruleName : rules.keySet()) {
+            Set<String> set = rules.get(ruleName);
+            if (buffer.containsKey(set)) redundantRules.put(ruleName, buffer.get(set));
+            else buffer.put(set, ruleName);
+        }
+        return redundantRules;
     }
 
     public static Map<String,Set<String>> manageRecursion(Map<String,Set<String>> prodRulesOld) {
@@ -181,12 +296,12 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
                 else if (startsWithIgnoringBrackets(s,"*")) s = s.replaceFirst("\\*", "");
                 else if (startsWithIgnoringBrackets(s,"?")) s = s.replaceFirst("\\?", "");
             }
-            recursiveParts.add("(" + s.trim() + ")" + " " + ruleName + "_tail?");
+            recursiveParts.add("(" + s.trim() + ")" + " (" + ruleName + "_tail)?");
         }
 
         buffer = new ArrayList<>();
         for(String s: nonRecursiveParts) {
-            buffer.add("(" + s.trim() + ")" + op + " " + ruleName + "_tail?");
+            buffer.add("(" + s.trim() + ")" + op + " (" + ruleName + "_tail)?");
         }
 
         Map<String,List<String>> refactoredRules = new LinkedHashMap<>();
@@ -208,6 +323,7 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
     public static String convertOperators(String[] input) {
         List<String> chars = new ArrayList<>();
         for (String s: input) {
+            if (s.isEmpty()) continue;
             s = s.trim();
             while (s.charAt(0) == '(') s = s.substring(1);
             String op = s.substring(0,1);
@@ -251,13 +367,42 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
         return cleaned.startsWith(prefix);
     }
 
-    public static void checkIndirectLeftRecursion(Map<String,Set<String>> rules) {
+    public static List<String> checkIfTermIsReachable(Map<String,Set<String>> rules) {
+        List<String> result = new ArrayList<>();
+        for (String ruleName : rules.keySet()) {
+            boolean isReachable = false;
+            for (String rule : rules.get(ruleName)) {
+                if (checkIfRuleReachesTerm(rules, rule, new HashSet<>())) {
+                    isReachable = true;
+                    break;
+                }
+            }
+            if (!isReachable) result.add(ruleName);
+        }
+        return result;
+    }
+
+    public static boolean checkIfRuleReachesTerm(Map<String,Set<String>> rules, String rule, Set<String> visited) {
+        if (visited.contains(rule)) return false;
+        if (rule.matches(".*[\"A-Z].*")) return true;
+        visited.add(rule);
+        Pattern pattern = Pattern.compile("\\b[a-z_]+\\b(?!\")");
+        Matcher matcher = pattern.matcher(rule);
+        while (matcher.find())
+            for (String s : rules.get(matcher.group()))
+                if (checkIfRuleReachesTerm(rules, s, visited)) return true;
+        return false;
+    }
+
+    public static List<String> checkIndirectLeftRecursion(Map<String,Set<String>> rules) {
+        List<String> result = new ArrayList<>();
         for (String rule : rules.keySet()) {
             Set<String> visited = new HashSet<>();
             if (hasIndirectLeftRecursion(rule, rule, visited)) {
-                System.err.println("Warning: Ricorsione sinistra indiretta trovata in " + rule);
+                result.add(rule);
             }
         }
+        return result;
     }
 
     private static boolean hasIndirectLeftRecursion(String start, String current, Set<String> visited) {
@@ -463,11 +608,11 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
             usedNonTerms.add(tokenName); // Aggiungi alla lista dei non terminali usati
             return tokenName;
         } else if (ctx.TERM() != null) {
-            String tokenName = ctx.TERM().getText().replaceAll("[<>]", "").toUpperCase();
+            String tokenName = ctx.TERM().getText().toUpperCase();
             usedTerms.add(tokenName); // Aggiungi alla lista dei terminali usati
             return tokenName;
         } else if (ctx.S_CHAR() != null) {
-            return ctx.S_CHAR().getText(); // Restituisci il testo del carattere speciale
+            return ctx.S_CHAR().getText().replaceAll("'", "\""); // Restituisci il testo del carattere speciale
         } else if (ctx.s_expr() != null) {
             return "(" + visitS_expr(ctx.s_expr()) + ")"; // Racchiudi il risultato tra parentesi
         }
@@ -477,11 +622,13 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
     @Override
     public String visitS_brackets_atom(GrammarParser.S_brackets_atomContext ctx) {
         String atomValue = visitS_atom(ctx.s_atom());
+        if (!atomValue.startsWith("(") && !atomValue.endsWith(")"))
+            atomValue = "(" + atomValue + ")";
         if (ctx.getChild(0).getText().equals("[")) {
             if (ctx.getChildCount() > 3 && ctx.getChild(1).getText().equals("{")) {
                 return atomValue + "*"; // Caso: {[s_atom]} -> s_atom*
             } else {
-                return atomValue + "+"; // Caso: {s_atom} -> s_atom+
+                return atomValue + "?"; // Caso: {s_atom} -> s_atom+
             }
         } else if (ctx.getChild(0).getText().equals("{")) {
             if (ctx.getChildCount() > 3 && ctx.getChild(1).getText().equals("[")) {
@@ -503,7 +650,7 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
 
     @Override
     public String visitL_rule(GrammarParser.L_ruleContext ctx) {
-        String tokenName = ctx.TERM().getText().replaceAll("[<>]", "");
+        String tokenName = ctx.TERM().getText();
         String regExp = visitL_reg_exp(ctx.l_reg_exp());
         lexerRules.put(tokenName, regExp);
         return ctx.getText();

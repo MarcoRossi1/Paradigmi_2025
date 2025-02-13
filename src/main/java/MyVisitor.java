@@ -38,16 +38,16 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
     public static void closeFile() {
         try {
             // OTTIMIZZAZIONI
-            prodRules = manageRecursion(prodRulesBuffer);
+            prodRules = removeUselessRules(prodRulesBuffer);
+            prodRules = removeRedundantRules(prodRules);
+            prodRules = manageRecursion(prodRules);
 
             // SCRITTURE SUL FILE
             writeRulesToFile(prodRules,lexerRules);
 
-            // CONTROLLO SEMANTICO: verifica che tutti i NON_TERM usati siano stati dichiarati
-            for (String token : usedNonTerms) {
-                if (!prodRulesBuffer.containsKey(token)) {
-                    System.err.println("Errore: Il NON_TERM '" + token + "' è usato ma non dichiarato.");
-                }
+            // CONTROLLO SEMANTICO: verifica se da alcune regole non si può raggiungere un simbolo terminale
+            for (String rule : checkIfTermIsReachable(prodRules)) {
+                System.err.println("Warning: Dal simbolo non terminale '" + rule + "' non è possibile raggiungere nessun simbolo terminale.");
             }
 
             // CONTROLLO SEMANTICO: verifica che tutti i TERM usati siano stati dichiarati
@@ -58,7 +58,9 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
             }
 
             // CONTROLLO SEMANTICO: ricorsione indiretta sinistra
-            checkIndirectLeftRecursion(prodRules);
+            for (String rule: checkIndirectLeftRecursion(prodRules)) {
+                System.err.println("Warning: Ricorsione sinistra indiretta trovata in " + rule);
+            }
 
             // CALCOLO DI METRICHE
             System.out.println("\nMETRICHE APPLICATE ALLA GRAMMATICA IN INPUT");
@@ -120,6 +122,64 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
         Float avgAlternatives = (float) numProdRules / (float) prodRules.size();
         System.out.println("Numero medio di regole alternative di un simbolo non terminale: "
                 + String.format("%.1f",avgAlternatives));
+    }
+
+    public static Map<String,Set<String>> removeUselessRules(Map<String,Set<String>> rules) {
+        List<String> uselessRules = findUselessRules(rules);
+        if (uselessRules.isEmpty()) return rules;
+        Map<String,Set<String>> newRules = new LinkedHashMap<>();
+        for (String uselessRuleName : uselessRules) {
+            String buffer = rules.get(uselessRuleName).iterator().next().trim();
+            for (String ruleName: rules.keySet()) {
+                for (String rule : rules.get(ruleName)) {
+                    String newRule = rule.replaceAll(uselessRuleName + "(?=\\b)", buffer).trim();
+                    newRules.computeIfAbsent(ruleName, _ -> new HashSet<>()).add(newRule);
+                }
+            }
+        }
+        for (String uselessRuleName : uselessRules)
+            newRules.remove(uselessRuleName);
+        return newRules;
+    }
+
+    public static List<String> findUselessRules(Map<String,Set<String>> rules) {
+        List<String> uselessRules = new ArrayList<>();
+        for (String ruleName : rules.keySet()) {
+            if (rules.get(ruleName).size() == 1) {
+                String rule = rules.get(ruleName).iterator().next();
+                if (rule.split("\\s+").length == 1)
+                    uselessRules.add(ruleName);
+            }
+        }
+        return uselessRules;
+    }
+
+    public static Map<String,Set<String>> removeRedundantRules(Map<String,Set<String>> rules) {
+        Map<String,String> redundantRules = findRedundantRules(rules);
+        if (redundantRules.isEmpty()) return rules;
+        Map<String,Set<String>> newRules = new LinkedHashMap<>();
+        for (String redundantRuleName : redundantRules.keySet()) {;
+            for (String ruleName: rules.keySet()) {
+                for (String rule : rules.get(ruleName)) {
+                    String newRule = rule.replaceAll(redundantRuleName + "(?=\\b)", redundantRules.get(redundantRuleName)).trim();
+                    newRules.computeIfAbsent(ruleName, _ -> new HashSet<>()).add(newRule);
+                }
+            }
+        }
+        for (String redundantRuleName : redundantRules.keySet())
+            newRules.remove(redundantRuleName);
+        return newRules;
+    }
+
+    public static Map<String,String> findRedundantRules(Map<String,Set<String>> rules) {
+        Map<String,String> redundantRules = new HashMap<>();
+        Map<Set<String>,String> buffer = new HashMap<>();
+        for (String ruleName : rules.keySet()) {
+            Set<String> set = rules.get(ruleName);
+            if (buffer.containsKey(set)) redundantRules.put(ruleName, buffer.get(set));
+            else buffer.put(set, ruleName);
+        }
+        return redundantRules;
     }
 
     public static Map<String,Set<String>> manageRecursion(Map<String,Set<String>> prodRulesOld) {
@@ -199,6 +259,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
     public static String convertOperators(String[] input) {
         List<String> chars = new ArrayList<>();
         for (String s: input) {
+            if (s.isEmpty()) continue;
             s = s.trim();
             while (s.charAt(0) == '(') s = s.substring(1);
             String op = s.substring(0,1);
@@ -242,13 +303,42 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
         return cleaned.startsWith(prefix);
     }
 
-    public static void checkIndirectLeftRecursion(Map<String,Set<String>> rules) {
+    public static List<String> checkIfTermIsReachable(Map<String,Set<String>> rules) {
+        List<String> result = new ArrayList<>();
+        for (String ruleName : rules.keySet()) {
+            boolean isReachable = false;
+            for (String rule : rules.get(ruleName)) {
+                if (checkIfRuleReachesTerm(rules, rule, new HashSet<>())) {
+                    isReachable = true;
+                    break;
+                }
+            }
+            if (!isReachable) result.add(ruleName);
+        }
+        return result;
+    }
+
+    public static boolean checkIfRuleReachesTerm(Map<String,Set<String>> rules, String rule, Set<String> visited) {
+        if (visited.contains(rule)) return false;
+        if (rule.matches(".*['A-Z].*")) return true;
+        visited.add(rule);
+        Pattern pattern = Pattern.compile("\\b[a-z_]+\\b(?!\")");
+        Matcher matcher = pattern.matcher(rule);
+        while (matcher.find())
+            for (String s : rules.get(matcher.group()))
+                if (checkIfRuleReachesTerm(rules, s, visited)) return true;
+        return false;
+    }
+
+    public static List<String> checkIndirectLeftRecursion(Map<String,Set<String>> rules) {
+        List<String> result = new ArrayList<>();
         for (String rule : rules.keySet()) {
             Set<String> visited = new HashSet<>();
             if (hasIndirectLeftRecursion(rule, rule, visited)) {
-                System.err.println("Warning: Ricorsione sinistra indiretta trovata in " + rule);
+                result.add(rule);
             }
         }
+        return result;
     }
 
     private static boolean hasIndirectLeftRecursion(String start, String current, Set<String> visited) {
@@ -472,7 +562,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
             if (ctx.getChildCount() > 3 && ctx.getChild(1).getText().equals("{")) {
                 return atomValue + "*"; // Caso: {[s_atom]} -> s_atom*
             } else {
-                return atomValue + "+"; // Caso: {s_atom} -> s_atom+
+                return atomValue + "?"; // Caso: {s_atom} -> s_atom+
             }
         } else if (ctx.getChild(0).getText().equals("{")) {
             if (ctx.getChildCount() > 3 && ctx.getChild(1).getText().equals("[")) {

@@ -1,10 +1,11 @@
 PARSER_START
-<stmt_list> ::= <stmt_list> '+' <stmt> <term> ;
-<stmt> ::= <stmt> <assign> | <print> ;
-<assign> ::= [(<IDENTIFIER> '=' <expr> ';')] ;
+<stmt_list> ::= <stmt_list> '+' <stmt> | <print_> ;
+<stmt> ::= <assign> ;
+<assign> ::= <stmt> | <stmt> ;
 <print> ::= <PRINT> '(' <IDENTIFIER> ')' ';' ;
-<expr> ::= <expr> '+' <term> | <term> ;
-<term> ::= <stmt_list> | <IDENTIFIER> ;
+<print_> ::= <PRINT> '(' <IDENTIFIER> ')' ';' ;
+<expr> ::= <expr> '+' | <term> ;
+<term> ::= <IDENTIFIER> '+';
 PARSER_END
 
 LEXER_START

@@ -1,13 +1,15 @@
 // Generated from C:/Users/fullm/IdeaProjects/Paradigmi_2025/src/main/antlr4/Grammar.g4 by ANTLR 4.13.2
 
-import java.io.*;
-import java.util.*;
-import java.util.regex.*;
-
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 @SuppressWarnings("CheckReturnValue")
-public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVisitorInterface {
+public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements MyVisitorInterface {
     static FileWriter writer;
 
     static Map<String, String> lexerRules = new LinkedHashMap<>();
@@ -22,7 +24,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
     static Map<String, Set<String>> dependencies = new HashMap<>();
     public static void startFile() {
         try {
-            writer = new FileWriter("OutputGrammar.g4");
+            writer = new FileWriter("OutputGrammar.jj");
             writeToFile("grammar OutputGrammar;\n");
             writeToFile("@header {");
             writeToFile("  // Inserisci qui gli import");
@@ -93,9 +95,16 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
             writeToFile("  // Inserisci qui le azioni semantiche");
             writeToFile("};\n");
         }
+        writeToFile("TOKEN : {");
+        int i = 0;
         for(String name: lexerRules.keySet()) {
-            writeToFile(name + " : " + lexerRules.get(name) + ";");
+            if (i == 0)
+                writeToFile("   <" + name + " : " + lexerRules.get(name) + ">");
+            else
+                writeToFile("   | <" + name + " : " + lexerRules.get(name) + ">");
+            i++;
         }
+        writeToFile("}");
     }
 
     public static void calculateMetrics(Map<String,Set<String>> rules) {
@@ -496,7 +505,6 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
     public String visitL_rule(GrammarParser.L_ruleContext ctx) {
         String tokenName = ctx.TERM().getText().replaceAll("[<>]", "");
         String regExp = visitL_reg_exp(ctx.l_reg_exp());
-        if (tokenName.equals("SKIP_")) regExp = regExp + " -> skip";
         lexerRules.put(tokenName, regExp);
         return ctx.getText();
     }
@@ -536,7 +544,10 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
                 int count = Integer.parseInt(q.replaceAll("[{}]", ""));
                 value = String.join(" ", Collections.nCopies(count, visitL_atom(ctx.l_atom())));
             } else {
-                value = visitL_atom(ctx.l_atom()) + q; // ?, +, *
+                String atomText = visitL_atom(ctx.l_atom());
+                if (!atomText.startsWith("(") && !atomText.endsWith(")"))
+                    atomText = "(" + atomText + ")";
+                value = atomText + q; // ?, +, *
             }
             return value;
         } else {
@@ -561,7 +572,19 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
     @Override
     public String visitL_simple_atom(GrammarParser.L_simple_atomContext ctx) {
         if (ctx.getText().startsWith("[") && ctx.getText().endsWith("]")) {
-            String textValue = ctx.getText();
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < ctx.getChildCount(); i++) {
+                if (ctx.getChild(i).getText().equals("[")
+                        || ctx.getChild(i).getText().equals("]")
+                        || ctx.getChild(i).getText().equals("^"))
+                    sb.append(ctx.getChild(i).getText());
+                else if (ctx.getChild(i) instanceof GrammarParser.L_intervalContext interval)
+                    sb.append(visitL_interval(interval)).append(",");
+                else
+                    sb.append("\"").append(ctx.getChild(i).getText()).append("\"").append(",");
+            }
+            String textValue = sb.toString();
+            if (textValue.endsWith(",]")) textValue = textValue.replaceFirst(",]", "]");
 
             // Creiamo un pattern per trovare il backslash seguito da un carattere
             Pattern pattern = Pattern.compile("\\\\(.)");
@@ -585,22 +608,23 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
 
             return textValue;
         } else if (ctx.CHAR(0) != null) {
-            return "'" + ctx.CHAR(0).getText() + "'";
+            return "\"" + ctx.CHAR(0).getText() + "\"";
         } else if (ctx.CIFRA(0) != null) {
-            return "'" + ctx.CIFRA(0).getText() + "'";
+            return "\"" + ctx.CIFRA(0).getText() + "\"";
         } else if (ctx.ESCAPE(0) != null) {
-            return "'" + ctx.ESCAPE(0).getText() + "'";
+            return "\"" + ctx.ESCAPE(0).getText() + "\"";
         } else if (ctx.METACHAR(0) != null) {
-            return "'" + ctx.METACHAR(0).getText().charAt(1) + "'";
+            return "\"" + ctx.METACHAR(0).getText().charAt(1) + "\"";
+
         } else if (ctx.SHORTCUT() != null) {
             String shortcutText = ctx.SHORTCUT().getText();
             return switch (shortcutText) {
-                case "\\w" -> "[a-zA-Z0-9_]";
-                case "\\d" -> "[0-9]";
-                case "\\s" -> "[ \t\r\n]";
-                case "\\W" -> "~[a-zA-Z0-9_]";
-                case "\\D" -> "~[0-9]";
-                case "\\S" -> "~[\t\r\n]";
+                case "\\w" -> "[\"a\"-\"z\",\"A\"-\"Z\",\"0\"-\"9\",\"_\"]";
+                case "\\d" -> "[\"0\"-\"9\"]";
+                case "\\s" -> "[\" \",\"\t\",\"\r\",\"\n\"]";
+                case "\\W" -> "~[\"a\"-\"z\",\"A\"-\"Z\",\"0\"-\"9\",\"_\"]";
+                case "\\D" -> "~[\"0\"-\"9\"]";
+                case "\\S" -> "~[\"\t\",\"\r\",\"\n\"]";
                 default -> "'" + shortcutText + "'";
             };
         } else return null; // Caso di fallback, non dovrebbe mai accadere
@@ -613,6 +637,8 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
 
     @Override
     public String visitL_interval(GrammarParser.L_intervalContext ctx) {
-        return ctx.getText();
+        String char1 = "\"" + ctx.getChild(0).getText() + "\"";
+        String char2 = "\"" + ctx.getChild(2).getText() + "\"";
+        return char1 + "-" + char2;
     }
 }

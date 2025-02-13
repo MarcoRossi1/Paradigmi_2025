@@ -42,6 +42,10 @@ public class Main {
             // Parsing dell'input partendo dalla regola principale (start)
             System.out.println("\n== Albero Sintattico ==");
             ParseTree tree = parser.start();
+
+            MyVisitor visitor = new MyVisitor();
+            visitor.visitStart((GrammarParser.StartContext) tree);
+
             System.out.println(tree.toStringTree(parser));
 
             // Visualizzazione grafica dell'albero di parsing

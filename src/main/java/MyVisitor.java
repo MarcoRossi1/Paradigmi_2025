@@ -89,7 +89,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
             sb.append(name.toLowerCase()).append(" : ");
             for(String rule: prodRules.get(name)) sb.append(rule).append(" | ");
             sb.setLength(sb.length() - 3);
-            writeToFile(sb.toString() + " {");
+            writeToFile(sb + " {");
             writeToFile("  // Inserisci qui le azioni semantiche");
             writeToFile("};\n");
         }
@@ -102,7 +102,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
         System.out.println("Numero di simboli terminali: " + lexerRules.size());
         System.out.println("Numero di simboli non terminali: " + rules.size());
 
-        List<Integer> rhsValues = new ArrayList<Integer>();
+        List<Integer> rhsValues = new ArrayList<>();
         int numProdRules = 0;
         for(String sxRule: rules.keySet()) {
             numProdRules = numProdRules + rules.get(sxRule).size();
@@ -123,10 +123,10 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
     }
 
     public static Map<String,Set<String>> manageRecursion(Map<String,Set<String>> prodRulesOld) {
-        Map<String,Set<String>> prodRulesNew = new LinkedHashMap<String,Set<String>>();
+        Map<String,Set<String>> prodRulesNew = new LinkedHashMap<>();
         for (String ruleName: prodRulesOld.keySet()) {
-            List<String> recursiveParts = new ArrayList<String>();
-            List<String> nonRecursiveParts = new ArrayList<String>();
+            List<String> recursiveParts = new ArrayList<>();
+            List<String> nonRecursiveParts = new ArrayList<>();
 
             for(String rule: prodRulesOld.get(ruleName)) {
                 rule = rule.trim();
@@ -135,36 +135,36 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
                 }
                 else {
                     nonRecursiveParts.add(rule);
-                    String token = rule.split("\\s+")[0].replaceAll("[\\(\\)\\?\\+\\*]", "");
-                    if (token != null) dependencies.computeIfAbsent(ruleName, k -> new HashSet<>()).add(token);
+                    String token = rule.split("\\s+")[0].replaceAll("[()?+*]", "");
+                    dependencies.computeIfAbsent(ruleName, _ -> new HashSet<>()).add(token);
                 }
             }
 
-            Map<String,List<String>> newRules = new LinkedHashMap<String,List<String>>();
+            Map<String,List<String>> newRules = new LinkedHashMap<>();
             if (!recursiveParts.isEmpty() && !nonRecursiveParts.isEmpty())
                 newRules = removeLeftRecursion(ruleName, recursiveParts, nonRecursiveParts);
             else if (recursiveParts.isEmpty() && !nonRecursiveParts.isEmpty())
                 newRules.put(ruleName, nonRecursiveParts);
-            else if (!recursiveParts.isEmpty() && nonRecursiveParts.isEmpty()) {
+            else if (!recursiveParts.isEmpty()) {
                 newRules.put(ruleName, recursiveParts);
                 System.err.println("La regola sintattica " + ruleName + " presenta una ricorsione diretta infinita");
             }
 
             for(String name: newRules.keySet())
                 for(String rule: newRules.get(name))
-                    prodRulesNew.computeIfAbsent(name, k -> new HashSet<>()).add(rule);
+                    prodRulesNew.computeIfAbsent(name, _ -> new HashSet<>()).add(rule);
         }
 
         return prodRulesNew;
     }
 
     public static Map<String,List<String>> removeLeftRecursion(String ruleName, List<String> recursiveParts, List<String> nonRecursiveParts) {
-        List<String> buffer = new ArrayList<String>();
+        List<String> buffer = new ArrayList<>();
         for(String rule: recursiveParts)
             buffer.add(cleanRule(rule, ruleName));
         String op = convertOperators(buffer.toArray(new String[0]));
 
-        recursiveParts = new ArrayList<String>();
+        recursiveParts = new ArrayList<>();
         for (String s: buffer) {
             s = s.trim();
             while (startsWithIgnoringBrackets(s,"+") | startsWithIgnoringBrackets(s,"*") | startsWithIgnoringBrackets(s,"?")) {
@@ -175,12 +175,12 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
             recursiveParts.add("(" + s.trim() + ")" + " " + ruleName + "_tail?");
         }
 
-        buffer = new ArrayList<String>();
+        buffer = new ArrayList<>();
         for(String s: nonRecursiveParts) {
             buffer.add("(" + s.trim() + ")" + op + " " + ruleName + "_tail?");
         }
 
-        Map<String,List<String>> refactoredRules = new LinkedHashMap<String,List<String>>();
+        Map<String,List<String>> refactoredRules = new LinkedHashMap<>();
         refactoredRules.put(ruleName,buffer);
         refactoredRules.put((ruleName+"_tail"),recursiveParts);
         return refactoredRules;
@@ -197,7 +197,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
     }
 
     public static String convertOperators(String[] input) {
-        List<String> chars = new ArrayList<String>();
+        List<String> chars = new ArrayList<>();
         for (String s: input) {
             s = s.trim();
             while (s.charAt(0) == '(') s = s.substring(1);
@@ -264,8 +264,8 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
     }
 
     private static List<String> splitInsideBrackets(String rule) {
-        List<String> input = new ArrayList<String>();
-        List<String> output = new ArrayList<String>();
+        List<String> input;
+        List<String> output = new ArrayList<>();
         boolean isSplittable = false;
         output.add(rule);
         if (findFirstOr(rule) != -1)
@@ -273,7 +273,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
         while (isSplittable) {
             isSplittable = false;
             List<String> temp = output;
-            output = new ArrayList<String>();
+            output = new ArrayList<>();
             input = temp;
             for(String s: input)
                 output.addAll(refactorBrackets(s));
@@ -318,7 +318,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
     }
 
     public static List<String> refactorBrackets(String input) {
-        List<String> rules = new ArrayList<String>();
+        List<String> rules = new ArrayList<>();
         input = input.trim();
 
         int orIdx = findFirstOr(input);
@@ -395,12 +395,12 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
         }
         prodRulesBuffer = prodRulesOld;
         return "";
-    };
+    }
 
     @Override
     public String visitS_rule(GrammarParser.S_ruleContext ctx) {
         String ruleName = ctx.NON_TERM().getText().replaceAll("[<>]", "");
-        prodRulesBuffer.computeIfAbsent(ruleName, k -> new HashSet<>()).add(visitS_expr(ctx.s_expr()).trim());
+        prodRulesBuffer.computeIfAbsent(ruleName, _ -> new HashSet<>()).add(visitS_expr(ctx.s_expr()).trim());
         return ctx.getText();
     }
 
@@ -519,7 +519,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
         if (ctx.l_quant() != null) {
             String value;
             String q = ctx.l_quant().getText();
-            if (q.matches("\\{\\d+,\\d+\\}")) {  // Caso {m,n}
+            if (q.matches("\\{\\d+,\\d+}")) {  // Caso {m,n}
                 String[] bounds = q.replaceAll("[{}]", "").split(",");
                 int min = Integer.parseInt(bounds[0]);
                 int max = Integer.parseInt(bounds[1]);

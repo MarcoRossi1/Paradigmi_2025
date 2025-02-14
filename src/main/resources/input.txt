@@ -1,5 +1,5 @@
 PARSER_START
-<stmt_list> ::= <stmt_list> '+' <stmt> | <print_> ;
+<stmt_list> ::= <stmt_list> '+' <stmt> | <stmt> ;
 <stmt> ::= <assign> ;
 <assign> ::= <stmt> | <stmt> ;
 <print> ::= <PRINT> '(' <IDENTIFIER> ')' ';' ;
@@ -17,5 +17,6 @@ LEXER_START
 <LPAREN> ::= \( ;
 <RPAREN> ::= \) ;
 <SEMI> ::= \; ;
-<SKIP_> ::= [\t\r\n]+;
+SKIP_CHARS
+<SKIPCHARS> ::= [\t\r\n]+;
 LEXER_END

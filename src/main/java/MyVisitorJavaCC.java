@@ -13,6 +13,7 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
     static FileWriter writer;
 
     static Map<String, String> lexerRules = new LinkedHashMap<>();
+    static Map<String, String> skipRules = new LinkedHashMap<>();
     static Set<String> usedNonTerms = new HashSet<>();
     static Set<String> usedTerms = new HashSet<>();
 
@@ -26,39 +27,43 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
     public static void startFile() {
         try {
             writer = new FileWriter("OutputGrammar.jj");
-            writeToFile("options {\n" +
-                    "    LOOKAHEAD = 1;                      // Lookahead di default per l'analisi sintattica\n" +
-                    "    CHOICE_AMBIGUITY_CHECK = 2;         // Livello di controllo per ambiguità nelle scelte\n" +
-                    "    OTHER_AMBIGUITY_CHECK = 1;          // Livello di controllo per ambiguità in altre costruzioni\n" +
-                    "    STATIC = true;                      // Genera metodi e campi statici\n" +
-                    "    DEBUG_PARSER = false;               // Disabilita il debug del parser\n" +
-                    "    DEBUG_LOOKAHEAD = false;            // Disabilita il debug del lookahead\n" +
-                    "    DEBUG_TOKEN_MANAGER = false;        // Disabilita il debug del gestore di token\n" +
-                    "    ERROR_REPORTING = true;             // Abilita la segnalazione degli errori\n" +
-                    "    JAVA_UNICODE_ESCAPE = false;        // Disabilita l'uso di escape Unicode nei file generati\n" +
-                    "    UNICODE_INPUT = false;              // Disabilita l'input Unicode\n" +
-                    "    IGNORE_CASE = false;                // Distingue tra maiuscole e minuscole nei token\n" +
-                    "    USER_TOKEN_MANAGER = false;         // Utilizza il gestore di token predefinito\n" +
-                    "    USER_CHAR_STREAM = false;           // Utilizza il flusso di caratteri predefinito\n" +
-                    "    BUILD_PARSER = true;                // Genera il codice per il parser\n" +
-                    "    BUILD_TOKEN_MANAGER = true;         // Genera il codice per il gestore di token\n" +
-                    "    TOKEN_EXTENDS = \"\";                 // Nessuna classe base personalizzata per i token\n" +
-                    "    TOKEN_FACTORY = \"\";                 // Nessuna fabbrica di token personalizzata\n" +
-                    "    SANITY_CHECK = true;                // Abilita controlli di sanità durante la generazione\n" +
-                    "    FORCE_LA_CHECK = false;             // Disabilita il controllo forzato del lookahead\n" +
-                    "    COMMON_TOKEN_ACTION = false;        // Disabilita azioni comuni sui token\n" +
-                    "    CACHE_TOKENS = false;               // Disabilita la memorizzazione nella cache dei token\n" +
-                    "    OUTPUT_DIRECTORY = \"\";              // Directory di output predefinita (stessa del file .jj)\n" +
-                    "    JDK_VERSION = \"1.5\";                // Versione di JDK target per il codice generato\n" +
-                    "    GRAMMAR_ENCODING = \"\";              // Codifica predefinita del file di grammatica\n" +
-                    "    KEEP_LINE_COLUMN = true;            // Mantieni informazioni su righe e colonne nei token\n" +
-                    "}\n");
+            writeToFile("""
+                    options {
+                        LOOKAHEAD = 1;                      // Lookahead di default per l'analisi sintattica
+                        CHOICE_AMBIGUITY_CHECK = 2;         // Livello di controllo per ambiguità nelle scelte
+                        OTHER_AMBIGUITY_CHECK = 1;          // Livello di controllo per ambiguità in altre costruzioni
+                        STATIC = true;                      // Genera metodi e campi statici
+                        DEBUG_PARSER = false;               // Disabilita il debug del parser
+                        DEBUG_LOOKAHEAD = false;            // Disabilita il debug del lookahead
+                        DEBUG_TOKEN_MANAGER = false;        // Disabilita il debug del gestore di token
+                        ERROR_REPORTING = true;             // Abilita la segnalazione degli errori
+                        JAVA_UNICODE_ESCAPE = false;        // Disabilita l'uso di escape Unicode nei file generati
+                        UNICODE_INPUT = false;              // Disabilita l'input Unicode
+                        IGNORE_CASE = false;                // Distingue tra maiuscole e minuscole nei token
+                        USER_TOKEN_MANAGER = false;         // Utilizza il gestore di token predefinito
+                        USER_CHAR_STREAM = false;           // Utilizza il flusso di caratteri predefinito
+                        BUILD_PARSER = true;                // Genera il codice per il parser
+                        BUILD_TOKEN_MANAGER = true;         // Genera il codice per il gestore di token
+                        TOKEN_EXTENDS = "";                 // Nessuna classe base personalizzata per i token
+                        TOKEN_FACTORY = "";                 // Nessuna fabbrica di token personalizzata
+                        SANITY_CHECK = true;                // Abilita controlli di sanità durante la generazione
+                        FORCE_LA_CHECK = false;             // Disabilita il controllo forzato del lookahead
+                        COMMON_TOKEN_ACTION = false;        // Disabilita azioni comuni sui token
+                        CACHE_TOKENS = false;               // Disabilita la memorizzazione nella cache dei token
+                        OUTPUT_DIRECTORY = "";              // Directory di output predefinita (stessa del file .jj)
+                        JDK_VERSION = "1.5";                // Versione di JDK target per il codice generato
+                        GRAMMAR_ENCODING = "";              // Codifica predefinita del file di grammatica
+                        KEEP_LINE_COLUMN = true;            // Mantieni informazioni su righe e colonne nei token
+                    }
+                    """);
             writeToFile("PARSER_BEGIN(OutputGrammar)");
             writeToFile("public class OutputGrammar {}");
             writeToFile("PARSER_END(OutputGrammar)\n");
-            writeToFile("TOKEN_MGR_DECLS: {\n" +
-                    "   /* Inserisci qui variabili e metodi per l'analizzatore lessicale */\n" +
-                    "}\n");
+            writeToFile("""
+                    TOKEN_MGR_DECLS: {
+                       /* Inserisci qui variabili e metodi per l'analizzatore lessicale */
+                    }
+                    """);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -75,7 +80,7 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
             prodRules = addBracketsToRules(prodRules);
 
             // SCRITTURE SUL FILE
-            writeRulesToFile(prodRules,lexerRules);
+            writeRulesToFile();
 
             // CONTROLLO SEMANTICO: verifica se da alcune regole non si può raggiungere un simbolo terminale
             for (String rule : checkIfTermIsReachable(prodRules)) {
@@ -124,7 +129,7 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
         }
     }
 
-    public static void writeRulesToFile(Map<String,Set<String>> prodRules, Map<String,String> lexerRules) {
+    public static void writeRulesToFile() {
         writeToFile("TOKEN: {");
         int i = 0;
         for(String name: lexerRules.keySet()) {
@@ -135,6 +140,19 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
             i++;
         }
         writeToFile("}\n");
+
+        if (!skipRules.isEmpty()) {
+            writeToFile("SKIP: {");
+            i = 0;
+            for(String name: skipRules.keySet()) {
+                if (i == 0)
+                    writeToFile("   " + name.replace('>', ':') + " " + skipRules.get(name) + ">");
+                else
+                    writeToFile("   | " + name.replace('>', ':') + " " + skipRules.get(name) + ">");
+                i++;
+            }
+            writeToFile("}\n");
+        }
 
         for(String name: prodRules.keySet()) {
             writeToFile("void " + name + "():");
@@ -222,7 +240,7 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
         Map<String,String> redundantRules = findRedundantRules(rules);
         if (redundantRules.isEmpty()) return rules;
         Map<String,Set<String>> newRules = new LinkedHashMap<>();
-        for (String redundantRuleName : redundantRules.keySet()) {;
+        for (String redundantRuleName : redundantRules.keySet()) {
             for (String ruleName: rules.keySet()) {
                 for (String rule : rules.get(ruleName)) {
                     String newRule = rule.replaceAll(redundantRuleName + "(?=\\b)", redundantRules.get(redundantRuleName)).trim();
@@ -643,8 +661,24 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
     @Override
     public String visitL_section(GrammarParser.L_sectionContext ctx) {
         for (int i = 0; i < ctx.getChildCount(); i++)
-            if (ctx.getChild(i) instanceof GrammarParser.L_ruleContext part)
-                visitL_rule(part);
+            if (ctx.getChild(i) instanceof GrammarParser.L_ruleContext part) {
+                String rule = visitL_rule(part);
+                int idx = rule.indexOf(',');
+                lexerRules.put(rule.substring(0, idx), rule.substring(idx + 1));
+            } else if (ctx.getChild(i) instanceof GrammarParser.L_skipContext part) {
+                visitL_skip(part);
+            }
+        return "";
+    }
+
+    @Override
+    public String visitL_skip(GrammarParser.L_skipContext ctx) {
+        for (int i = 0; i < ctx.getChildCount(); i++)
+            if (ctx.getChild(i) instanceof GrammarParser.L_ruleContext part) {
+                String rule = visitL_rule(part);
+                int idx = rule.indexOf(',');
+                skipRules.put(rule.substring(0, idx), rule.substring(idx + 1));
+            }
         return "";
     }
 
@@ -652,8 +686,7 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
     public String visitL_rule(GrammarParser.L_ruleContext ctx) {
         String tokenName = ctx.TERM().getText();
         String regExp = visitL_reg_exp(ctx.l_reg_exp());
-        lexerRules.put(tokenName, regExp);
-        return ctx.getText();
+        return tokenName + "," + regExp;
     }
 
     @Override

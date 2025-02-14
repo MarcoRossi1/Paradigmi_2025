@@ -31,7 +31,10 @@ s_brackets_atom:
     | '[' '{' e=s_atom '}' ']';
 
 l_section:
-    L_START l_rule+ L_END;
+    L_START l_rule+ l_skip? L_END;
+
+l_skip:
+    SKIP_CHARS l_rule+;
 
 l_rule:
     TERM EQUAL l_reg_exp ';';
@@ -75,6 +78,7 @@ l_interval:
 
 L_START: 'LEXER_START';
 L_END: 'LEXER_END';
+SKIP_CHARS: 'SKIP_CHARS';
 TERM: '<' [A-Z][A-Z_]* '>';
 S_START: 'PARSER_START';
 S_END: 'PARSER_END';

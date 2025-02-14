@@ -107,6 +107,16 @@ public interface GrammarListener extends ParseTreeListener {
 	 */
 	void exitL_section(GrammarParser.L_sectionContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link GrammarParser#l_skip}.
+	 * @param ctx the parse tree
+	 */
+	void enterL_skip(GrammarParser.L_skipContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#l_skip}.
+	 * @param ctx the parse tree
+	 */
+	void exitL_skip(GrammarParser.L_skipContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link GrammarParser#l_rule}.
 	 * @param ctx the parse tree
 	 */

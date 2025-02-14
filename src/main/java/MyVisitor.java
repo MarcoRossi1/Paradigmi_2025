@@ -11,6 +11,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
     static FileWriter writer;
 
     static Map<String, String> lexerRules = new LinkedHashMap<>();
+    static Map<String, String> skipRules = new LinkedHashMap<>();
     static Set<String> usedNonTerms = new HashSet<>();
     static Set<String> usedTerms = new HashSet<>();
 
@@ -43,7 +44,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
             prodRules = manageRecursion(prodRules);
 
             // SCRITTURE SUL FILE
-            writeRulesToFile(prodRules,lexerRules);
+            writeRulesToFile();
 
             // CONTROLLO SEMANTICO: verifica se da alcune regole non si può raggiungere un simbolo terminale
             for (String rule : checkIfTermIsReachable(prodRules)) {
@@ -85,7 +86,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
         }
     }
 
-    public static void writeRulesToFile(Map<String,Set<String>> prodRules, Map<String,String> lexerRules) {
+    public static void writeRulesToFile() {
         for(String name: prodRules.keySet()) {
             StringBuilder sb = new StringBuilder();
             sb.append(name.toLowerCase()).append(" : ");
@@ -97,6 +98,9 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
         }
         for(String name: lexerRules.keySet()) {
             writeToFile(name + " : " + lexerRules.get(name) + ";");
+        }
+        for(String name: skipRules.keySet()) {
+            writeToFile(name + " : " + skipRules.get(name) + " -> skip ;");
         }
     }
 
@@ -158,7 +162,7 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
         Map<String,String> redundantRules = findRedundantRules(rules);
         if (redundantRules.isEmpty()) return rules;
         Map<String,Set<String>> newRules = new LinkedHashMap<>();
-        for (String redundantRuleName : redundantRules.keySet()) {;
+        for (String redundantRuleName : redundantRules.keySet()) {
             for (String ruleName: rules.keySet()) {
                 for (String rule : rules.get(ruleName)) {
                     String newRule = rule.replaceAll(redundantRuleName + "(?=\\b)", redundantRules.get(redundantRuleName)).trim();
@@ -577,18 +581,32 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
     @Override
     public String visitL_section(GrammarParser.L_sectionContext ctx) {
         for (int i = 0; i < ctx.getChildCount(); i++)
-            if (ctx.getChild(i) instanceof GrammarParser.L_ruleContext part)
-                visitL_rule(part);
+            if (ctx.getChild(i) instanceof GrammarParser.L_ruleContext part) {
+                String rule = visitL_rule(part);
+                int idx = rule.indexOf(',');
+                lexerRules.put(rule.substring(0, idx), rule.substring(idx + 1));
+            } else if (ctx.getChild(i) instanceof GrammarParser.L_skipContext part) {
+                visitL_skip(part);
+            }
+        return "";
+    }
+
+    @Override
+    public String visitL_skip(GrammarParser.L_skipContext ctx) {
+        for (int i = 0; i < ctx.getChildCount(); i++)
+            if (ctx.getChild(i) instanceof GrammarParser.L_ruleContext part) {
+                String rule = visitL_rule(part);
+                int idx = rule.indexOf(',');
+                skipRules.put(rule.substring(0, idx), rule.substring(idx + 1));
+            }
         return "";
     }
 
     @Override
     public String visitL_rule(GrammarParser.L_ruleContext ctx) {
-        String tokenName = ctx.TERM().getText().replaceAll("[<>]", "");
+        String tokenName = ctx.TERM().getText().replaceAll("[<>]", "").toUpperCase();
         String regExp = visitL_reg_exp(ctx.l_reg_exp());
-        if (tokenName.equals("SKIP_")) regExp = regExp + " -> skip";
-        lexerRules.put(tokenName, regExp);
-        return ctx.getText();
+        return tokenName + "," + regExp;
     }
 
     @Override

@@ -22,6 +22,8 @@ public interface MyVisitorInterface extends ParseTreeVisitor<String> {
 
     String visitL_section(GrammarParser.L_sectionContext ctx);
 
+    String visitL_skip(GrammarParser.L_skipContext ctx);
+
     String visitL_rule(GrammarParser.L_ruleContext ctx);
 
     String visitL_reg_exp(GrammarParser.L_reg_expContext ctx);

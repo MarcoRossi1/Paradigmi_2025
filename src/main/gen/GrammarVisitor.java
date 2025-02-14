@@ -70,6 +70,12 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitL_section(GrammarParser.L_sectionContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link GrammarParser#l_skip}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitL_skip(GrammarParser.L_skipContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link GrammarParser#l_rule}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

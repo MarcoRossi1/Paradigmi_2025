@@ -43,7 +43,7 @@ public class Main {
             System.out.println("\n== Albero Sintattico ==");
             ParseTree tree = parser.start();
 
-            MyVisitor visitor = new MyVisitor();
+            MyVisitorJavaCC visitor = new MyVisitorJavaCC();
             visitor.visitStart((GrammarParser.StartContext) tree);
 
             System.out.println(tree.toStringTree(parser));

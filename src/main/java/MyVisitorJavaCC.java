@@ -74,6 +74,7 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
             // OTTIMIZZAZIONI
             prodRules = removeUselessRules(prodRulesBuffer);
             prodRules = removeRedundantRules(prodRules);
+
             prodRules = manageRecursion(prodRules);
 
             prodRulesBuffer = addBracketsToRules(prodRulesBuffer);
@@ -211,10 +212,15 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
         if (uselessRules.isEmpty()) return rules;
         Map<String,Set<String>> newRules = new LinkedHashMap<>();
         for (String uselessRuleName : uselessRules) {
+            if (!newRules.isEmpty()) {
+                rules = newRules;
+                newRules = new LinkedHashMap<>();
+            }
             String buffer = rules.get(uselessRuleName).iterator().next().trim();
             for (String ruleName: rules.keySet()) {
                 for (String rule : rules.get(ruleName)) {
                     String newRule = rule.replaceAll(uselessRuleName + "(?=\\b)", buffer).trim();
+                    System.out.println(newRule);
                     newRules.computeIfAbsent(ruleName, _ -> new HashSet<>()).add(newRule);
                 }
             }
@@ -241,6 +247,10 @@ public class MyVisitorJavaCC extends AbstractParseTreeVisitor<String> implements
         if (redundantRules.isEmpty()) return rules;
         Map<String,Set<String>> newRules = new LinkedHashMap<>();
         for (String redundantRuleName : redundantRules.keySet()) {
+            if (!newRules.isEmpty()) {
+                rules = newRules;
+                newRules = new LinkedHashMap<>();
+            }
             for (String ruleName: rules.keySet()) {
                 for (String rule : rules.get(ruleName)) {
                     String newRule = rule.replaceAll(redundantRuleName + "(?=\\b)", redundantRules.get(redundantRuleName)).trim();

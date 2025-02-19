@@ -51,6 +51,13 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
                 System.err.println("Warning: Dal simbolo non terminale '" + rule + "' non è possibile raggiungere nessun simbolo terminale.");
             }
 
+            // CONTROLLO SEMANTICO: verifica che tutti i NON_TERM usati siano stati dichiarati
+            for (String token : usedNonTerms) {
+                if (!prodRulesBuffer.containsKey(token)) {
+                    System.err.println("Errore: Il NON_TERM '" + token + "' è usato ma non dichiarato.");
+                }
+            }
+
             // CONTROLLO SEMANTICO: verifica che tutti i TERM usati siano stati dichiarati
             for (String token : usedTerms) {
                 if (!lexerRules.containsKey(token)) {
@@ -133,6 +140,10 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
         if (uselessRules.isEmpty()) return rules;
         Map<String,Set<String>> newRules = new LinkedHashMap<>();
         for (String uselessRuleName : uselessRules) {
+            if (!newRules.isEmpty()) {
+                rules = newRules;
+                newRules = new LinkedHashMap<>();
+            }
             String buffer = rules.get(uselessRuleName).iterator().next().trim();
             for (String ruleName: rules.keySet()) {
                 for (String rule : rules.get(ruleName)) {
@@ -163,6 +174,10 @@ public class MyVisitor extends AbstractParseTreeVisitor<String> implements MyVis
         if (redundantRules.isEmpty()) return rules;
         Map<String,Set<String>> newRules = new LinkedHashMap<>();
         for (String redundantRuleName : redundantRules.keySet()) {
+            if (!newRules.isEmpty()) {
+                rules = newRules;
+                newRules = new LinkedHashMap<>();
+            }
             for (String ruleName: rules.keySet()) {
                 for (String rule : rules.get(ruleName)) {
                     String newRule = rule.replaceAll(redundantRuleName + "(?=\\b)", redundantRules.get(redundantRuleName)).trim();
